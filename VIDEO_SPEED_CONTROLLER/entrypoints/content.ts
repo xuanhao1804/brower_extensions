@@ -95,11 +95,11 @@ export default defineContentScript({
       if (!controller) return;
       const speedLabel = `x${formatSpeed(controller.video.playbackRate)}`;
       controller.badge.textContent = speedLabel;
-      controller.badge.setAttribute('aria-label', `Tốc độ hiện tại ${speedLabel}`);
+      controller.badge.setAttribute('aria-label', `Current speed ${speedLabel}`);
       controller.host.style.opacity = String(settings.badgeOpacity);
       controller.host.style.display = settings.showBadge ? 'block' : 'none';
       controller.badge.title =
-        'Click: tốc độ tiếp theo · Chuột phải: về x1 · Lăn chuột: tăng/giảm';
+        'Click: next speed · Right-click: reset to x1 · Scroll: adjust speed';
       scheduleLayout();
     }
 
@@ -261,8 +261,8 @@ export default defineContentScript({
       decreaseButton.type = 'button';
       decreaseButton.className = 'vsc-button vsc-side vsc-decrease';
       decreaseButton.textContent = '<<';
-      decreaseButton.title = 'Giảm tốc độ';
-      decreaseButton.setAttribute('aria-label', 'Giảm tốc độ');
+      decreaseButton.title = 'Decrease speed';
+      decreaseButton.setAttribute('aria-label', 'Decrease speed');
 
       const badge = document.createElement('button');
       badge.type = 'button';
@@ -272,8 +272,8 @@ export default defineContentScript({
       increaseButton.type = 'button';
       increaseButton.className = 'vsc-button vsc-side vsc-increase';
       increaseButton.textContent = '>>';
-      increaseButton.title = 'Tăng tốc độ';
-      increaseButton.setAttribute('aria-label', 'Tăng tốc độ');
+      increaseButton.title = 'Increase speed';
+      increaseButton.setAttribute('aria-label', 'Increase speed');
 
       controls.append(decreaseButton, badge, increaseButton);
       shadow.append(style, controls);

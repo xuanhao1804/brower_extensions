@@ -28,6 +28,7 @@ const resetButton = requireElement<HTMLButtonElement>('reset-settings');
 
 let settings = sanitizeSettings(await settingsStorage.getValue());
 let captureAction: ShortcutAction | null = null;
+let activeSpeed: number | null = null;
 
 renderSettings();
 void refreshCurrentSpeed();
@@ -37,14 +38,14 @@ form.addEventListener('submit', async (event) => {
   settings = readSettings();
   await settingsStorage.setValue(settings);
   renderSettings();
-  showStatus('Đã lưu cài đặt.');
+  showStatus('Changes saved.');
 });
 
 resetButton.addEventListener('click', async () => {
   settings = structuredClone(DEFAULT_SETTINGS);
   await settingsStorage.setValue(settings);
   renderSettings();
-  showStatus('Đã khôi phục cài đặt mặc định.');
+  showStatus('Defaults restored.');
 });
 
 badgeOpacityInput.addEventListener('input', updateOpacityLabel);
@@ -53,7 +54,7 @@ document.querySelectorAll<HTMLButtonElement>('.shortcut').forEach((button) => {
   button.addEventListener('click', () => {
     captureAction = button.dataset.action as ShortcutAction;
     button.classList.add('capturing');
-    button.textContent = 'Nhấn phím…';
+    button.textContent = 'Press keys…';
     button.focus();
   });
 
@@ -105,7 +106,9 @@ function renderPresets(): void {
   for (const speed of settings.presets) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = `${formatSpeed(speed)}×`;
+    button.dataset.speed = String(speed);
+    button.textContent = `x${formatSpeed(speed)}`;
+    button.classList.toggle('active', isSameSpeed(speed, activeSpeed));
     button.addEventListener('click', () => void applySpeed(speed));
     presetButtons.append(button);
   }
@@ -132,18 +135,29 @@ function readSettings(): SpeedSettings {
 async function applySpeed(speed: number): Promise<void> {
   const response = await sendToActiveTab({ type: 'SET_VIDEO_SPEED', speed });
   if (!response?.ok || response.speed === undefined) {
-    showStatus(response?.error ?? 'Hãy mở một trang có video rồi thử lại.', true);
+    showStatus(response?.error ?? 'Open a page with an active video.', true);
     return;
   }
-  currentSpeed.value = `${formatSpeed(response.speed)}×`;
-  showStatus(`Đã đặt tốc độ ${formatSpeed(response.speed)}×.`);
+  setCurrentSpeed(response.speed);
+  showStatus(`Speed set to x${formatSpeed(response.speed)}.`);
 }
 
 async function refreshCurrentSpeed(): Promise<void> {
   const response = await sendToActiveTab({ type: 'GET_VIDEO_SPEED' });
-  currentSpeed.value = response?.ok && response.speed !== undefined
-    ? `${formatSpeed(response.speed)}×`
-    : '—';
+  setCurrentSpeed(response?.ok && response.speed !== undefined ? response.speed : null);
+}
+
+function setCurrentSpeed(speed: number | null): void {
+  activeSpeed = speed;
+  currentSpeed.value = speed === null ? '—' : `x${formatSpeed(speed)}`;
+  presetButtons.querySelectorAll<HTMLButtonElement>('button[data-speed]').forEach((button) => {
+    const presetSpeed = Number.parseFloat(button.dataset.speed ?? '');
+    button.classList.toggle('active', isSameSpeed(presetSpeed, speed));
+  });
+}
+
+function isSameSpeed(left: number, right: number | null): boolean {
+  return right !== null && Math.abs(left - right) < 0.001;
 }
 
 async function sendToActiveTab(
@@ -172,7 +186,7 @@ function showStatus(message: string, isError = false): void {
 
 function requireElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
-  if (!element) throw new Error(`Thiếu element #${id}`);
+  if (!element) throw new Error(`Missing element #${id}`);
   return element as T;
 }
 

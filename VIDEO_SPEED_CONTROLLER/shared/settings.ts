@@ -135,6 +135,6 @@ export function formatShortcut(shortcut: ShortcutBinding): string {
     .replace(/^Key/, '')
     .replace(/^Digit/, '')
     .replace('Arrow', '');
-  parts.push(readableCode || 'Chưa đặt');
+  parts.push(readableCode || 'Not set');
   return parts.join(' + ');
 }
