@@ -7,6 +7,7 @@ Browser extension dùng để điều chỉnh tốc độ video HTML5 trên YouT
 - Phím tắt tùy biến để tăng, giảm và reset tốc độ.
 - Giữ modifier + lăn chuột trên video để đổi tốc độ.
 - Badge mờ hiển thị tốc độ ở góc video.
+- Chỉ hiện badge khi player thực sự được sử dụng; bỏ qua YouTube hover preview và video preview bị mute.
 - Click badge để chuyển preset, chuột phải để về `1×`.
 - Popup cấu hình default speed, step, presets, shortcut và opacity.
 - Cấu hình được đồng bộ bằng `browser.storage.sync`.

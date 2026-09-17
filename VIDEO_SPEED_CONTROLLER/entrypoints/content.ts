@@ -17,6 +17,10 @@ interface VideoController {
   cleanup: () => void;
 }
 
+interface ObservedVideo {
+  cleanup: () => void;
+}
+
 export default defineContentScript({
   matches: ['*://*/*'],
   allFrames: true,
@@ -26,13 +30,22 @@ export default defineContentScript({
     let activeVideo: HTMLVideoElement | null = null;
     let layoutFrame: number | null = null;
     const controllers = new Map<HTMLVideoElement, VideoController>();
+    const observedVideos = new Map<HTMLVideoElement, ObservedVideo>();
 
     function getBestVideo(): HTMLVideoElement | null {
-      if (activeVideo?.isConnected) return activeVideo;
+      if (
+        activeVideo?.isConnected &&
+        controllers.has(activeVideo) &&
+        canControlVideo(activeVideo)
+      ) {
+        return activeVideo;
+      }
+      activeVideo = null;
 
       let bestVideo: HTMLVideoElement | null = null;
       let bestArea = 0;
       for (const video of controllers.keys()) {
+        if (!canControlVideo(video)) continue;
         const rect = video.getBoundingClientRect();
         const visibleWidth = Math.max(
           0,
@@ -97,7 +110,12 @@ export default defineContentScript({
     function positionBadge(controller: VideoController): void {
       const { video, host } = controller;
       if (!video.isConnected) {
-        removeVideo(video);
+        removeObservedVideo(video);
+        return;
+      }
+
+      if (!canControlVideo(video)) {
+        removeController(video);
         return;
       }
 
@@ -122,8 +140,14 @@ export default defineContentScript({
       host.style.top = `${Math.max(8, rect.top + 10)}px`;
     }
 
-    function addVideo(video: HTMLVideoElement): void {
-      if (controllers.has(video)) return;
+    function activateVideo(video: HTMLVideoElement): VideoController | null {
+      const existingController = controllers.get(video);
+      if (existingController) {
+        activeVideo = video;
+        updateBadge(existingController);
+        return existingController;
+      }
+      if (!video.isConnected || !canControlVideo(video)) return null;
 
       const host = document.createElement('div');
       host.setAttribute(CONTROLLER_ATTRIBUTE, '');
@@ -163,31 +187,26 @@ export default defineContentScript({
       shadow.append(badge);
       document.documentElement.append(host);
 
-      const markActive = () => {
-        activeVideo = video;
-      };
       const onRateChange = () => updateBadge(controllers.get(video));
       const onClick = (event: MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        markActive();
+        activeVideo = video;
         cyclePreset(video);
       };
       const onContextMenu = (event: MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        markActive();
+        activeVideo = video;
         setSpeed(video, 1);
       };
       const onWheel = (event: WheelEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        markActive();
+        activeVideo = video;
         adjustSpeed(video, event.deltaY < 0 ? 1 : -1);
       };
 
-      video.addEventListener('play', markActive);
-      video.addEventListener('pointerdown', markActive, true);
       video.addEventListener('ratechange', onRateChange);
       badge.addEventListener('click', onClick);
       badge.addEventListener('contextmenu', onContextMenu);
@@ -203,8 +222,6 @@ export default defineContentScript({
         resizeObserver,
         cleanup: () => {
           resizeObserver.disconnect();
-          video.removeEventListener('play', markActive);
-          video.removeEventListener('pointerdown', markActive, true);
           video.removeEventListener('ratechange', onRateChange);
           badge.removeEventListener('click', onClick);
           badge.removeEventListener('contextmenu', onContextMenu);
@@ -214,14 +231,37 @@ export default defineContentScript({
       };
 
       controllers.set(video, controller);
-      if (!activeVideo || !activeVideo.isConnected || !video.paused) {
-        activeVideo = video;
-      }
+      activeVideo = video;
       setSpeed(video, settings.defaultSpeed);
       updateBadge(controller);
+      return controller;
     }
 
-    function removeVideo(video: HTMLVideoElement): void {
+    function observeVideo(video: HTMLVideoElement): void {
+      if (observedVideos.has(video)) return;
+
+      const onPointerDown = () => {
+        activateVideo(video);
+      };
+      const onPlaying = () => {
+        if (shouldAutoActivateVideo(video)) activateVideo(video);
+      };
+
+      video.addEventListener('pointerdown', onPointerDown, true);
+      video.addEventListener('playing', onPlaying);
+      observedVideos.set(video, {
+        cleanup: () => {
+          video.removeEventListener('pointerdown', onPointerDown, true);
+          video.removeEventListener('playing', onPlaying);
+        },
+      });
+
+      if (!video.paused && shouldAutoActivateVideo(video)) {
+        activateVideo(video);
+      }
+    }
+
+    function removeController(video: HTMLVideoElement): void {
       const controller = controllers.get(video);
       if (!controller) return;
       controller.cleanup();
@@ -229,14 +269,32 @@ export default defineContentScript({
       if (activeVideo === video) activeVideo = null;
     }
 
+    function removeObservedVideo(video: HTMLVideoElement): void {
+      removeController(video);
+      const observedVideo = observedVideos.get(video);
+      if (!observedVideo) return;
+      observedVideo.cleanup();
+      observedVideos.delete(video);
+    }
+
     function scanForVideos(root: ParentNode = document): void {
-      if (root instanceof HTMLVideoElement) addVideo(root);
-      root.querySelectorAll('video').forEach(addVideo);
+      if (root instanceof HTMLVideoElement) observeVideo(root);
+      root.querySelectorAll('video').forEach(observeVideo);
     }
 
     function removeVideosFrom(root: Element): void {
-      if (root instanceof HTMLVideoElement) removeVideo(root);
-      root.querySelectorAll('video').forEach(removeVideo);
+      if (root instanceof HTMLVideoElement) removeObservedVideo(root);
+      root.querySelectorAll('video').forEach(removeObservedVideo);
+    }
+
+    function reconcileVideos(): void {
+      for (const video of controllers.keys()) {
+        if (!canControlVideo(video)) removeController(video);
+      }
+      for (const video of observedVideos.keys()) {
+        if (shouldAutoActivateVideo(video)) activateVideo(video);
+      }
+      scheduleLayout();
     }
 
     function isEditableTarget(target: EventTarget | null): boolean {
@@ -266,7 +324,8 @@ export default defineContentScript({
       if (!element) return null;
       if (element instanceof HTMLVideoElement) return element;
 
-      for (const video of controllers.keys()) {
+      for (const video of observedVideos.keys()) {
+        if (!canControlVideo(video)) continue;
         const rect = video.getBoundingClientRect();
         if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
           return video;
@@ -321,6 +380,7 @@ export default defineContentScript({
       if (isBadgeWheel) return;
       const video = findVideoAtPoint(event.clientX, event.clientY);
       if (!video) return;
+      if (!activateVideo(video)) return;
       event.preventDefault();
       activeVideo = video;
       adjustSpeed(video, event.deltaY < 0 ? 1 : -1);
@@ -329,6 +389,8 @@ export default defineContentScript({
     ctx.addEventListener(window, 'resize', scheduleLayout);
     ctx.addEventListener(window, 'scroll', scheduleLayout, true);
     ctx.addEventListener(document, 'fullscreenchange', scheduleLayout);
+    ctx.addEventListener(document, 'yt-navigate-finish', reconcileVideos);
+    ctx.addEventListener(window, 'popstate', reconcileVideos);
 
     const unwatchSettings = settingsStorage.watch((newValue) => {
       settings = sanitizeSettings(newValue);
@@ -360,9 +422,46 @@ export default defineContentScript({
       if (layoutFrame !== null) cancelAnimationFrame(layoutFrame);
       for (const controller of controllers.values()) controller.cleanup();
       controllers.clear();
+      for (const observedVideo of observedVideos.values()) observedVideo.cleanup();
+      observedVideos.clear();
     });
   },
 });
+
+const YOUTUBE_HOST_PATTERN = /(^|\.)youtube(?:-nocookie)?\.com$/i;
+const YOUTUBE_PLAYER_PATH_PATTERN =
+  /^\/(?:watch(?:\/|$)|shorts(?:\/|$)|embed(?:\/|$)|live(?:\/|$))/;
+const YOUTUBE_PREVIEW_SELECTOR = [
+  'ytd-video-preview',
+  'ytd-moving-thumbnail-renderer',
+  'ytd-rich-grid-media',
+  'ytd-rich-item-renderer',
+  'ytd-grid-video-renderer',
+  'ytd-compact-video-renderer',
+  'ytd-thumbnail',
+].join(',');
+
+function isYouTubeSite(): boolean {
+  return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
+}
+
+function canControlVideo(video: HTMLVideoElement): boolean {
+  if (!isYouTubeSite()) return true;
+  if (!YOUTUBE_PLAYER_PATH_PATTERN.test(window.location.pathname)) return false;
+  if (video.closest(YOUTUBE_PREVIEW_SELECTOR)) return false;
+
+  return (
+    video.matches('.html5-main-video') ||
+    Boolean(video.closest('#movie_player, .html5-video-player, ytd-player'))
+  );
+}
+
+function shouldAutoActivateVideo(video: HTMLVideoElement): boolean {
+  if (!canControlVideo(video) || video.paused || video.ended) return false;
+  if (isYouTubeSite()) return true;
+
+  return video.controls || (!video.muted && video.volume > 0);
+}
 
 function formatSpeed(speed: number): string {
   return speed.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
