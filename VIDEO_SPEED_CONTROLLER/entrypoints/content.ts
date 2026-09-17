@@ -185,20 +185,19 @@ export default defineContentScript({
           display: flex;
           width: 36px;
           height: 36px;
-          margin-left: 34px;
+          margin-left: 0;
           overflow: hidden;
           border: 1px solid rgba(255, 255, 255, 0.3);
           border-radius: 4px;
           background: rgba(10, 12, 16, 0.9);
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
           pointer-events: auto;
-          transition: width 140ms ease, margin-left 140ms ease;
+          transition: width 140ms ease;
         }
 
         .vsc-controls:hover,
         .vsc-controls:focus-within {
           width: 104px;
-          margin-left: 0;
         }
 
         .vsc-button {
