@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Speed Controller</title>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <p class="eyebrow">VIDEO SPEED</p>
+          <h1>Điều khiển tốc độ</h1>
+        </div>
+        <output id="current-speed" class="current-speed">—</output>
+      </header>
+
+      <section aria-labelledby="quick-title">
+        <div class="section-heading">
+          <h2 id="quick-title">Chọn nhanh</h2>
+          <span>Áp dụng cho video đang xem</span>
+        </div>
+        <div id="preset-buttons" class="presets"></div>
+      </section>
+
+      <form id="settings-form">
+        <section aria-labelledby="speed-title">
+          <h2 id="speed-title">Tốc độ</h2>
+          <div class="grid two-columns">
+            <label>
+              Mặc định
+              <input id="default-speed" type="number" min="0.25" max="16" step="0.05" />
+            </label>
+            <label>
+              Mỗi lần tăng/giảm
+              <input id="speed-step" type="number" min="0.05" max="4" step="0.05" />
+            </label>
+          </div>
+          <label>
+            Presets (cách nhau bằng dấu phẩy)
+            <input id="presets" type="text" placeholder="0.5, 1, 1.5, 2, 3" />
+          </label>
+        </section>
+
+        <section aria-labelledby="shortcut-title">
+          <div class="section-heading">
+            <h2 id="shortcut-title">Phím tắt</h2>
+            <span>Click rồi nhấn tổ hợp mới</span>
+          </div>
+          <div class="shortcut-list">
+            <div><span>Giảm tốc</span><button type="button" class="shortcut" data-action="decrease"></button></div>
+            <div><span>Tăng tốc</span><button type="button" class="shortcut" data-action="increase"></button></div>
+            <div><span>Về 1×</span><button type="button" class="shortcut" data-action="reset"></button></div>
+          </div>
+        </section>
+
+        <section aria-labelledby="mouse-title">
+          <h2 id="mouse-title">Chuột & badge</h2>
+          <label class="switch-row">
+            <span>Dùng con lăn trên video</span>
+            <input id="wheel-enabled" type="checkbox" />
+          </label>
+          <label>
+            Phím giữ khi lăn
+            <select id="wheel-modifier">
+              <option value="Alt">Alt</option>
+              <option value="Control">Ctrl</option>
+              <option value="Shift">Shift</option>
+              <option value="Meta">Meta</option>
+              <option value="None">Không cần giữ phím</option>
+            </select>
+          </label>
+          <label class="switch-row">
+            <span>Hiện badge trên video</span>
+            <input id="show-badge" type="checkbox" />
+          </label>
+          <label>
+            Độ mờ badge <output id="opacity-value"></output>
+            <input id="badge-opacity" type="range" min="0.2" max="1" step="0.05" />
+          </label>
+          <p class="hint">Click badge để đổi preset, chuột phải để về 1×.</p>
+        </section>
+
+        <footer>
+          <button id="reset-settings" class="secondary" type="button">Khôi phục</button>
+          <button class="primary" type="submit">Lưu cài đặt</button>
+        </footer>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
