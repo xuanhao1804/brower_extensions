@@ -127,17 +127,23 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = video.getBoundingClientRect();
+      const badgeLeft = rect.left + 10;
+      const badgeTop = rect.top + 10;
       const isVisible =
         rect.width >= 120 &&
         rect.height >= 68 &&
         rect.bottom > 0 &&
         rect.right > 0 &&
         rect.top < window.innerHeight &&
-        rect.left < window.innerWidth;
+        rect.left < window.innerWidth &&
+        badgeLeft >= 0 &&
+        badgeTop >= 0 &&
+        badgeLeft < window.innerWidth &&
+        badgeTop < window.innerHeight;
 
       host.style.visibility = isVisible ? 'visible' : 'hidden';
-      host.style.left = `${Math.max(8, rect.left + 10)}px`;
-      host.style.top = `${Math.max(8, rect.top + 10)}px`;
+      host.style.left = `${badgeLeft}px`;
+      host.style.top = `${badgeTop}px`;
     }
 
     function activateVideo(video: HTMLVideoElement): VideoController | null {
@@ -309,6 +315,11 @@ export default defineContentScript({
       scheduleLayout();
     }
 
+    function clearYouTubeControllers(): void {
+      if (!isYouTubeSite()) return;
+      for (const video of [...controllers.keys()]) removeController(video);
+    }
+
     function isEditableTarget(target: EventTarget | null): boolean {
       if (!(target instanceof Element)) return false;
       return Boolean(
@@ -354,6 +365,9 @@ export default defineContentScript({
         for (const node of record.removedNodes) {
           if (node instanceof Element) removeVideosFrom(node);
         }
+      }
+      if (isYouTubeSite() && !isYouTubePlaybackPage()) {
+        clearYouTubeControllers();
       }
     });
 
@@ -401,7 +415,9 @@ export default defineContentScript({
     ctx.addEventListener(window, 'resize', scheduleLayout);
     ctx.addEventListener(window, 'scroll', scheduleLayout, true);
     ctx.addEventListener(document, 'fullscreenchange', scheduleLayout);
+    ctx.addEventListener(document, 'yt-navigate-start', clearYouTubeControllers);
     ctx.addEventListener(document, 'yt-navigate-finish', reconcileVideos);
+    ctx.addEventListener(document, 'yt-page-data-updated', reconcileVideos);
     ctx.addEventListener(window, 'popstate', reconcileVideos);
 
     const unwatchSettings = settingsStorage.watch((newValue) => {
@@ -466,9 +482,16 @@ function isYouTubeSite(): boolean {
   return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
 }
 
+function isYouTubePlaybackPage(): boolean {
+  return (
+    isYouTubeSite() &&
+    YOUTUBE_PLAYER_PATH_PATTERN.test(window.location.pathname)
+  );
+}
+
 function canControlVideo(video: HTMLVideoElement): boolean {
   if (!isYouTubeSite()) return true;
-  if (!YOUTUBE_PLAYER_PATH_PATTERN.test(window.location.pathname)) return false;
+  if (!isYouTubePlaybackPage()) return false;
   if (video.closest(YOUTUBE_PREVIEW_SELECTOR)) return false;
 
   return (
