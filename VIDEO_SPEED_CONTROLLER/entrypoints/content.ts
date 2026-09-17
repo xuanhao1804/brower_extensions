@@ -93,11 +93,13 @@ export default defineContentScript({
 
     function updateBadge(controller?: VideoController): void {
       if (!controller) return;
-      controller.badge.textContent = `${formatSpeed(controller.video.playbackRate)}×`;
+      const speedLabel = `x${formatSpeed(controller.video.playbackRate)}`;
+      controller.badge.textContent = speedLabel;
+      controller.badge.setAttribute('aria-label', `Tốc độ hiện tại ${speedLabel}`);
       controller.host.style.opacity = String(settings.badgeOpacity);
       controller.host.style.display = settings.showBadge ? 'block' : 'none';
       controller.badge.title =
-        'Click: tốc độ tiếp theo · Chuột phải: về 1× · Lăn chuột: tăng/giảm';
+        'Click: tốc độ tiếp theo · Chuột phải: về x1 · Lăn chuột: tăng/giảm';
       scheduleLayout();
     }
 
@@ -176,29 +178,106 @@ export default defineContentScript({
       });
 
       const shadow = host.attachShadow({ mode: 'closed' });
+      const style = document.createElement('style');
+      style.textContent = `
+        .vsc-controls {
+          box-sizing: border-box;
+          display: flex;
+          width: 36px;
+          height: 36px;
+          margin-left: 34px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 4px;
+          background: rgba(10, 12, 16, 0.9);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+          pointer-events: auto;
+          transition: width 140ms ease, margin-left 140ms ease;
+        }
+
+        .vsc-controls:hover,
+        .vsc-controls:focus-within {
+          width: 104px;
+          margin-left: 0;
+        }
+
+        .vsc-button {
+          all: unset;
+          box-sizing: border-box;
+          display: grid;
+          flex: 0 0 34px;
+          width: 34px;
+          height: 34px;
+          place-items: center;
+          color: #fff;
+          font: 700 12px/1 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          font-variant-numeric: tabular-nums;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .vsc-button:hover {
+          background: rgba(255, 255, 255, 0.16);
+        }
+
+        .vsc-button:focus-visible {
+          outline: 2px solid rgba(255, 255, 255, 0.85);
+          outline-offset: -3px;
+        }
+
+        .vsc-side {
+          flex-basis: 0;
+          width: 0;
+          opacity: 0;
+          pointer-events: none;
+          transform: scaleX(0);
+          transition: flex-basis 140ms ease, width 140ms ease, opacity 100ms ease,
+            transform 140ms ease;
+        }
+
+        .vsc-controls:hover .vsc-side,
+        .vsc-controls:focus-within .vsc-side {
+          flex-basis: 34px;
+          width: 34px;
+          opacity: 1;
+          pointer-events: auto;
+          transform: scaleX(1);
+        }
+
+        .vsc-decrease {
+          border-right: 1px solid rgba(255, 255, 255, 0.18);
+          transform-origin: right;
+        }
+
+        .vsc-increase {
+          border-left: 1px solid rgba(255, 255, 255, 0.18);
+          transform-origin: left;
+        }
+      `;
+
+      const controls = document.createElement('div');
+      controls.className = 'vsc-controls';
+
+      const decreaseButton = document.createElement('button');
+      decreaseButton.type = 'button';
+      decreaseButton.className = 'vsc-button vsc-side vsc-decrease';
+      decreaseButton.textContent = '<<';
+      decreaseButton.title = 'Giảm tốc độ';
+      decreaseButton.setAttribute('aria-label', 'Giảm tốc độ');
+
       const badge = document.createElement('button');
       badge.type = 'button';
-      Object.assign(badge.style, {
-        all: 'initial',
-        boxSizing: 'border-box',
-        display: 'grid',
-        placeItems: 'center',
-        minWidth: '48px',
-        height: '28px',
-        padding: '0 8px',
-        border: '1px solid rgba(255, 255, 255, 0.28)',
-        borderRadius: '7px',
-        background: 'rgba(10, 12, 16, 0.88)',
-        color: '#ffffff',
-        font: '600 13px/1 system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-        fontVariantNumeric: 'tabular-nums',
-        letterSpacing: '0.01em',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.28)',
-        cursor: 'pointer',
-        pointerEvents: 'auto',
-        userSelect: 'none',
-      });
-      shadow.append(badge);
+      badge.className = 'vsc-button vsc-speed';
+
+      const increaseButton = document.createElement('button');
+      increaseButton.type = 'button';
+      increaseButton.className = 'vsc-button vsc-side vsc-increase';
+      increaseButton.textContent = '>>';
+      increaseButton.title = 'Tăng tốc độ';
+      increaseButton.setAttribute('aria-label', 'Tăng tốc độ');
+
+      controls.append(decreaseButton, badge, increaseButton);
+      shadow.append(style, controls);
       document.documentElement.append(host);
 
       const onRateChange = () => updateBadge(controllers.get(video));
@@ -214,6 +293,18 @@ export default defineContentScript({
         activeVideo = video;
         setSpeed(video, 1);
       };
+      const onDecrease = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activeVideo = video;
+        adjustSpeed(video, -1);
+      };
+      const onIncrease = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activeVideo = video;
+        adjustSpeed(video, 1);
+      };
       const onWheel = (event: WheelEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -224,7 +315,9 @@ export default defineContentScript({
       video.addEventListener('ratechange', onRateChange);
       badge.addEventListener('click', onClick);
       badge.addEventListener('contextmenu', onContextMenu);
-      badge.addEventListener('wheel', onWheel, { passive: false });
+      decreaseButton.addEventListener('click', onDecrease);
+      increaseButton.addEventListener('click', onIncrease);
+      controls.addEventListener('wheel', onWheel, { passive: false });
 
       const resizeObserver = new ResizeObserver(scheduleLayout);
       resizeObserver.observe(video);
@@ -239,7 +332,9 @@ export default defineContentScript({
           video.removeEventListener('ratechange', onRateChange);
           badge.removeEventListener('click', onClick);
           badge.removeEventListener('contextmenu', onContextMenu);
-          badge.removeEventListener('wheel', onWheel);
+          decreaseButton.removeEventListener('click', onDecrease);
+          increaseButton.removeEventListener('click', onIncrease);
+          controls.removeEventListener('wheel', onWheel);
           host.remove();
         },
       };
