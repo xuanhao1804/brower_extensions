@@ -3,21 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="manifest.default_icon"
+      content='{"16":"icon/16.png","32":"icon/32.png","48":"icon/48.png"}'
+    />
     <title>Video Speed Controller</title>
   </head>
   <body>
     <main class="app">
       <header class="hero">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true">»</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="presentation">
+              <rect width="48" height="48" rx="12" />
+              <path d="M11.5 14.5 24 24 11.5 33.5V14.5Zm13 0L37 24 24.5 33.5V14.5Z" />
+            </svg>
+          </div>
           <div>
             <h1>Video speed</h1>
             <p>Precise control for HTML5 players</p>
           </div>
-        </div>
-        <div class="speed-readout">
-          <span>Current</span>
-          <output id="current-speed" class="current-speed">—</output>
         </div>
       </header>
 

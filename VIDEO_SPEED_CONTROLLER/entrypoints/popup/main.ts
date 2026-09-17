@@ -21,7 +21,6 @@ const wheelModifierInput = requireElement<HTMLSelectElement>('wheel-modifier');
 const showBadgeInput = requireElement<HTMLInputElement>('show-badge');
 const badgeOpacityInput = requireElement<HTMLInputElement>('badge-opacity');
 const opacityValue = requireElement<HTMLOutputElement>('opacity-value');
-const currentSpeed = requireElement<HTMLOutputElement>('current-speed');
 const presetButtons = requireElement<HTMLDivElement>('preset-buttons');
 const status = requireElement<HTMLParagraphElement>('status');
 const resetButton = requireElement<HTMLButtonElement>('reset-settings');
@@ -149,7 +148,6 @@ async function refreshCurrentSpeed(): Promise<void> {
 
 function setCurrentSpeed(speed: number | null): void {
   activeSpeed = speed;
-  currentSpeed.value = speed === null ? '—' : `x${formatSpeed(speed)}`;
   presetButtons.querySelectorAll<HTMLButtonElement>('button[data-speed]').forEach((button) => {
     const presetSpeed = Number.parseFloat(button.dataset.speed ?? '');
     button.classList.toggle('active', isSameSpeed(presetSpeed, speed));

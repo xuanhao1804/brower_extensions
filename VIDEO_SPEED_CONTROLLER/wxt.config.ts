@@ -4,7 +4,7 @@ export default defineConfig({
   manifest: {
     name: 'Video Speed Controller',
     description:
-      'Điều chỉnh tốc độ video bằng phím tắt, chuột và các tốc độ cài sẵn.',
+      'Control HTML5 video speed with shortcuts, mouse gestures, and presets.',
     permissions: ['storage'],
     browser_specific_settings: {
       gecko: {
