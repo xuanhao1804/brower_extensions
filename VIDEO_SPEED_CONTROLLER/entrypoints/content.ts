@@ -243,22 +243,29 @@ export default defineContentScript({
       const onPointerDown = () => {
         activateVideo(video);
       };
-      const onPlaying = () => {
-        if (shouldAutoActivateVideo(video)) activateVideo(video);
+      const tryAutoActivate = () => {
+        if (
+          shouldAutoActivateVideo(video) ||
+          shouldActivateOnDiscovery(video)
+        ) {
+          activateVideo(video);
+        }
       };
 
       video.addEventListener('pointerdown', onPointerDown, true);
-      video.addEventListener('playing', onPlaying);
+      video.addEventListener('playing', tryAutoActivate);
+      video.addEventListener('loadedmetadata', tryAutoActivate);
+      video.addEventListener('volumechange', tryAutoActivate);
       observedVideos.set(video, {
         cleanup: () => {
           video.removeEventListener('pointerdown', onPointerDown, true);
-          video.removeEventListener('playing', onPlaying);
+          video.removeEventListener('playing', tryAutoActivate);
+          video.removeEventListener('loadedmetadata', tryAutoActivate);
+          video.removeEventListener('volumechange', tryAutoActivate);
         },
       });
 
-      if (!video.paused && shouldAutoActivateVideo(video)) {
-        activateVideo(video);
-      }
+      tryAutoActivate();
     }
 
     function removeController(video: HTMLVideoElement): void {
@@ -292,7 +299,12 @@ export default defineContentScript({
         if (!canControlVideo(video)) removeController(video);
       }
       for (const video of observedVideos.keys()) {
-        if (shouldAutoActivateVideo(video)) activateVideo(video);
+        if (
+          shouldAutoActivateVideo(video) ||
+          shouldActivateOnDiscovery(video)
+        ) {
+          activateVideo(video);
+        }
       }
       scheduleLayout();
     }
@@ -440,6 +452,15 @@ const YOUTUBE_PREVIEW_SELECTOR = [
   'ytd-compact-video-renderer',
   'ytd-thumbnail',
 ].join(',');
+const KNOWN_PLAYER_SELECTOR = [
+  '.jwplayer',
+  '.video-js',
+  '.plyr',
+  '.shaka-video-container',
+  'media-player',
+  '[data-vjs-player]',
+].join(',');
+const KNOWN_PLAYER_VIDEO_SELECTOR = '.jw-video, .vjs-tech, .shaka-video';
 
 function isYouTubeSite(): boolean {
   return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
@@ -461,6 +482,19 @@ function shouldAutoActivateVideo(video: HTMLVideoElement): boolean {
   if (isYouTubeSite()) return true;
 
   return video.controls || (!video.muted && video.volume > 0);
+}
+
+function shouldActivateOnDiscovery(video: HTMLVideoElement): boolean {
+  if (!canControlVideo(video)) return false;
+  if (isYouTubeSite()) return true;
+
+  const rect = video.getBoundingClientRect();
+  const isLargeEnough = rect.width >= 320 && rect.height >= 180;
+  const usesKnownPlayer =
+    video.matches(KNOWN_PLAYER_VIDEO_SELECTOR) ||
+    Boolean(video.closest(KNOWN_PLAYER_SELECTOR));
+
+  return isLargeEnough && usesKnownPlayer;
 }
 
 function formatSpeed(speed: number): string {
