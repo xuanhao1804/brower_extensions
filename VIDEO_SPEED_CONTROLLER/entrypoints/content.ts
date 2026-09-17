@@ -26,6 +26,10 @@ export default defineContentScript({
   allFrames: true,
 
   async main(ctx) {
+    document
+      .querySelectorAll<HTMLElement>(`[${CONTROLLER_ATTRIBUTE}]`)
+      .forEach((staleHost) => staleHost.remove());
+
     let settings = sanitizeSettings(await settingsStorage.getValue());
     let activeVideo: HTMLVideoElement | null = null;
     let layoutFrame: number | null = null;
@@ -147,6 +151,10 @@ export default defineContentScript({
     }
 
     function activateVideo(video: HTMLVideoElement): VideoController | null {
+      for (const controlledVideo of [...controllers.keys()]) {
+        if (controlledVideo !== video) removeController(controlledVideo);
+      }
+
       const existingController = controllers.get(video);
       if (existingController) {
         activeVideo = video;
@@ -366,8 +374,10 @@ export default defineContentScript({
           if (node instanceof Element) removeVideosFrom(node);
         }
       }
-      if (isYouTubeSite() && !isYouTubePlaybackPage()) {
-        clearYouTubeControllers();
+      if (isYouTubeSite()) {
+        for (const video of [...controllers.keys()]) {
+          if (!canControlVideo(video)) removeController(video);
+        }
       }
     });
 
@@ -489,27 +499,51 @@ function isYouTubePlaybackPage(): boolean {
   );
 }
 
+function isYouTubeMiniPlayer(video: HTMLVideoElement): boolean {
+  const usesMiniPlayerContainer = Boolean(
+    video.closest(
+      'ytd-miniplayer, #movie_player.ytp-player-minimized, .html5-video-player.ytp-player-minimized',
+    ),
+  );
+  if (usesMiniPlayerContainer) return true;
+
+  const rect = video.getBoundingClientRect();
+  const hasMiniPlayerSize =
+    rect.width >= 200 &&
+    rect.height >= 110 &&
+    rect.width <= 640 &&
+    rect.height <= 400;
+  const isNearBottomRight =
+    rect.right >= window.innerWidth - 80 &&
+    rect.bottom >= window.innerHeight - 80;
+
+  return hasMiniPlayerSize && isNearBottomRight && isMeaningfullyVisible(video);
+}
+
 function canControlVideo(video: HTMLVideoElement): boolean {
   if (!isYouTubeSite()) return true;
-  if (!isYouTubePlaybackPage()) return false;
   if (video.closest(YOUTUBE_PREVIEW_SELECTOR)) return false;
 
-  return (
+  const isYouTubePlayer =
     video.matches('.html5-main-video') ||
-    Boolean(video.closest('#movie_player, .html5-video-player, ytd-player'))
+    Boolean(video.closest('#movie_player, .html5-video-player, ytd-player'));
+
+  return (
+    isYouTubePlayer &&
+    (isYouTubePlaybackPage() || isYouTubeMiniPlayer(video))
   );
 }
 
 function shouldAutoActivateVideo(video: HTMLVideoElement): boolean {
   if (!canControlVideo(video) || video.paused || video.ended) return false;
-  if (isYouTubeSite()) return true;
+  if (isYouTubeSite()) return isMeaningfullyVisible(video);
 
   return video.controls || (!video.muted && video.volume > 0);
 }
 
 function shouldActivateOnDiscovery(video: HTMLVideoElement): boolean {
   if (!canControlVideo(video)) return false;
-  if (isYouTubeSite()) return true;
+  if (isYouTubeSite()) return isMeaningfullyVisible(video);
 
   const rect = video.getBoundingClientRect();
   const isLargeEnough = rect.width >= 320 && rect.height >= 180;
@@ -518,6 +552,24 @@ function shouldActivateOnDiscovery(video: HTMLVideoElement): boolean {
     Boolean(video.closest(KNOWN_PLAYER_SELECTOR));
 
   return isLargeEnough && usesKnownPlayer;
+}
+
+function isMeaningfullyVisible(video: HTMLVideoElement): boolean {
+  const rect = video.getBoundingClientRect();
+  if (rect.width < 120 || rect.height < 68) return false;
+
+  const visibleWidth = Math.max(
+    0,
+    Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0),
+  );
+  const visibleHeight = Math.max(
+    0,
+    Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0),
+  );
+  const visibleArea = visibleWidth * visibleHeight;
+  const totalArea = rect.width * rect.height;
+
+  return visibleArea >= Math.min(totalArea * 0.5, 80_000);
 }
 
 function formatSpeed(speed: number): string {
