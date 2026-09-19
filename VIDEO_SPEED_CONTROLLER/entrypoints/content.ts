@@ -261,6 +261,16 @@ export default defineContentScript({
           background: rgba(255, 255, 255, 0.26);
         }
 
+        .vsc-speed-adjustment {
+          background: rgba(255, 255, 255, 0.55);
+          color: rgba(10, 12, 16, 0.92);
+        }
+
+        .vsc-speed-adjustment:hover,
+        .vsc-speed-adjustment:focus-visible {
+          background: rgba(255, 255, 255, 0.78);
+        }
+
         .vsc-controls:hover .vsc-side,
         .vsc-controls:focus-within .vsc-side {
           flex-basis: 34px;
@@ -283,7 +293,7 @@ export default defineContentScript({
 
       const decreaseButton = document.createElement('button');
       decreaseButton.type = 'button';
-      decreaseButton.className = 'vsc-button vsc-side';
+      decreaseButton.className = 'vsc-button vsc-side vsc-speed-adjustment';
       decreaseButton.textContent = '−';
       decreaseButton.title = 'Decrease speed';
       decreaseButton.setAttribute('aria-label', 'Decrease speed');
@@ -294,7 +304,7 @@ export default defineContentScript({
 
       const increaseButton = document.createElement('button');
       increaseButton.type = 'button';
-      increaseButton.className = 'vsc-button vsc-side';
+      increaseButton.className = 'vsc-button vsc-side vsc-speed-adjustment';
       increaseButton.textContent = '+';
       increaseButton.title = 'Increase speed';
       increaseButton.setAttribute('aria-label', 'Increase speed');
@@ -321,9 +331,9 @@ export default defineContentScript({
 
       controls.append(
         badge,
+        rewindButton,
         decreaseButton,
         increaseButton,
-        rewindButton,
         forwardButton,
       );
       shadow.append(style, controls);
