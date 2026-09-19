@@ -244,8 +244,8 @@ export default defineContentScript({
         }
 
         .vsc-decrease {
-          border-right: 1px solid rgba(255, 255, 255, 0.18);
-          transform-origin: right;
+          border-left: 1px solid rgba(255, 255, 255, 0.18);
+          transform-origin: left;
         }
 
         .vsc-increase {
@@ -275,7 +275,7 @@ export default defineContentScript({
       increaseButton.title = 'Increase speed';
       increaseButton.setAttribute('aria-label', 'Increase speed');
 
-      controls.append(decreaseButton, badge, increaseButton);
+      controls.append(badge, decreaseButton, increaseButton);
       shadow.append(style, controls);
       document.documentElement.append(host);
 
