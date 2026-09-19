@@ -1,10 +1,10 @@
 # Project context
 
-Last verified: 2026-09-19
+Last verified: 2026-09-20
 
 ## Purpose and product
 
-This repository currently contains **Video Speed Controller**, a browser extension for controlling HTML5 video playback speed on YouTube and other websites. Users can configure keyboard shortcuts, mouse-wheel behavior, default speed, speed steps, presets, and an on-video controller.
+This repository currently contains **Video Speed Controller**, a browser extension for controlling HTML5 video playback speed on YouTube and other websites. Users can configure keyboard shortcuts, mouse-wheel behavior, default speed, speed steps, presets, and an on-video controller with fixed 10-second rewind/forward actions.
 
 The GitHub repository is `xuanhao1804/brower_extensions` (the remote name contains the historical `brower` spelling). Product source lives under `VIDEO_SPEED_CONTROLLER/`.
 
@@ -21,7 +21,7 @@ The GitHub repository is `xuanhao1804/brower_extensions` (the remote name contai
 
 ### Entrypoints
 
-- `VIDEO_SPEED_CONTROLLER/entrypoints/content.ts`: all-frame content script matched on `*://*/*`. Discovers eligible `<video>` elements, selects one active player, applies playback speed, handles keyboard/wheel events, and mounts the Shadow DOM on-video controller.
+- `VIDEO_SPEED_CONTROLLER/entrypoints/content.ts`: all-frame content script matched on `*://*/*`. Discovers eligible `<video>` elements, selects one active player, applies playback speed and 10-second seeks, handles keyboard/wheel events, and mounts the Shadow DOM on-video controller.
 - `VIDEO_SPEED_CONTROLLER/entrypoints/popup/`: compact settings/quick-control popup. It reads and writes settings and sends typed messages to the active tab.
 - No background/service worker, options page, backend, or page-world injected script currently exists.
 
