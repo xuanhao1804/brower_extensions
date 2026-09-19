@@ -8,6 +8,7 @@ import {
 import type { ContentMessage, VideoSpeedResponse } from '../shared/messages';
 
 const CONTROLLER_ATTRIBUTE = 'data-vsc-controlled';
+const SEEK_STEP_SECONDS = 10;
 
 interface VideoController {
   video: HTMLVideoElement;
@@ -82,6 +83,24 @@ export default defineContentScript({
 
     function adjustSpeed(video: HTMLVideoElement, direction: -1 | 1): void {
       setSpeed(video, video.playbackRate + settings.speedStep * direction);
+    }
+
+    function seekVideo(video: HTMLVideoElement, offsetSeconds: number): void {
+      if (!Number.isFinite(video.currentTime)) return;
+
+      const maxTime = Number.isFinite(video.duration)
+        ? Math.max(0, video.duration)
+        : Number.POSITIVE_INFINITY;
+      const requestedTime = Math.min(
+        Math.max(0, video.currentTime + offsetSeconds),
+        maxTime,
+      );
+
+      try {
+        video.currentTime = requestedTime;
+      } catch (error) {
+        console.warn('[Video Speed Controller] Không thể tua video.', error);
+      }
     }
 
     function cyclePreset(video: HTMLVideoElement): void {
@@ -197,7 +216,7 @@ export default defineContentScript({
 
         .vsc-controls:hover,
         .vsc-controls:focus-within {
-          width: 104px;
+          width: 172px;
         }
 
         .vsc-button {
@@ -227,11 +246,19 @@ export default defineContentScript({
         .vsc-side {
           flex-basis: 0;
           width: 0;
+          border-left: 1px solid rgba(255, 255, 255, 0.18);
+          color: rgba(255, 255, 255, 0.82);
           opacity: 0;
           pointer-events: none;
           transform: scaleX(0);
+          transform-origin: left;
           transition: flex-basis 140ms ease, width 140ms ease, opacity 100ms ease,
             transform 140ms ease;
+        }
+
+        .vsc-side:hover,
+        .vsc-side:focus-visible {
+          background: rgba(255, 255, 255, 0.26);
         }
 
         .vsc-controls:hover .vsc-side,
@@ -243,14 +270,11 @@ export default defineContentScript({
           transform: scaleX(1);
         }
 
-        .vsc-decrease {
-          border-left: 1px solid rgba(255, 255, 255, 0.18);
-          transform-origin: left;
-        }
-
-        .vsc-increase {
-          border-left: 1px solid rgba(255, 255, 255, 0.18);
-          transform-origin: left;
+        @media (prefers-reduced-motion: reduce) {
+          .vsc-controls,
+          .vsc-side {
+            transition: none;
+          }
         }
       `;
 
@@ -259,8 +283,8 @@ export default defineContentScript({
 
       const decreaseButton = document.createElement('button');
       decreaseButton.type = 'button';
-      decreaseButton.className = 'vsc-button vsc-side vsc-decrease';
-      decreaseButton.textContent = '<<';
+      decreaseButton.className = 'vsc-button vsc-side';
+      decreaseButton.textContent = '−';
       decreaseButton.title = 'Decrease speed';
       decreaseButton.setAttribute('aria-label', 'Decrease speed');
 
@@ -270,12 +294,38 @@ export default defineContentScript({
 
       const increaseButton = document.createElement('button');
       increaseButton.type = 'button';
-      increaseButton.className = 'vsc-button vsc-side vsc-increase';
-      increaseButton.textContent = '>>';
+      increaseButton.className = 'vsc-button vsc-side';
+      increaseButton.textContent = '+';
       increaseButton.title = 'Increase speed';
       increaseButton.setAttribute('aria-label', 'Increase speed');
 
-      controls.append(badge, decreaseButton, increaseButton);
+      const rewindButton = document.createElement('button');
+      rewindButton.type = 'button';
+      rewindButton.className = 'vsc-button vsc-side';
+      rewindButton.textContent = '<<';
+      rewindButton.title = `Rewind ${SEEK_STEP_SECONDS} seconds`;
+      rewindButton.setAttribute(
+        'aria-label',
+        `Rewind ${SEEK_STEP_SECONDS} seconds`,
+      );
+
+      const forwardButton = document.createElement('button');
+      forwardButton.type = 'button';
+      forwardButton.className = 'vsc-button vsc-side';
+      forwardButton.textContent = '>>';
+      forwardButton.title = `Forward ${SEEK_STEP_SECONDS} seconds`;
+      forwardButton.setAttribute(
+        'aria-label',
+        `Forward ${SEEK_STEP_SECONDS} seconds`,
+      );
+
+      controls.append(
+        badge,
+        decreaseButton,
+        increaseButton,
+        rewindButton,
+        forwardButton,
+      );
       shadow.append(style, controls);
       document.documentElement.append(host);
 
@@ -304,6 +354,18 @@ export default defineContentScript({
         activeVideo = video;
         adjustSpeed(video, 1);
       };
+      const onRewind = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activeVideo = video;
+        seekVideo(video, -SEEK_STEP_SECONDS);
+      };
+      const onForward = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activeVideo = video;
+        seekVideo(video, SEEK_STEP_SECONDS);
+      };
       const onWheel = (event: WheelEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -316,6 +378,8 @@ export default defineContentScript({
       badge.addEventListener('contextmenu', onContextMenu);
       decreaseButton.addEventListener('click', onDecrease);
       increaseButton.addEventListener('click', onIncrease);
+      rewindButton.addEventListener('click', onRewind);
+      forwardButton.addEventListener('click', onForward);
       controls.addEventListener('wheel', onWheel, { passive: false });
 
       const resizeObserver = new ResizeObserver(scheduleLayout);
@@ -333,6 +397,8 @@ export default defineContentScript({
           badge.removeEventListener('contextmenu', onContextMenu);
           decreaseButton.removeEventListener('click', onDecrease);
           increaseButton.removeEventListener('click', onIncrease);
+          rewindButton.removeEventListener('click', onRewind);
+          forwardButton.removeEventListener('click', onForward);
           controls.removeEventListener('wheel', onWheel);
           host.remove();
         },
