@@ -19,6 +19,7 @@ No pre-existing Issues, Pull Requests, tags, releases, or non-`main` branches re
 | 2026-09-18 | Assess browser compatibility and release packaging | [#12](https://github.com/xuanhao1804/brower_extensions/issues/12) | None | None | Documented supported targets, package strategy and Safari/mobile limitations. | Completed investigation | Task summary plus current scripts/config; reported builds are not CI artifacts. |
 | 2026-09-18 | Prepare Store listing content and declarations | [#13](https://github.com/xuanhao1804/brower_extensions/issues/13) | None | None | Supplied listing copy, single-purpose statement and permission/data declarations. | Completed content | Task-only outcome cross-checked with source; Store form values are external. |
 | 2026-09-18 | Submit extension to Chrome Web Store | [#14](https://github.com/xuanhao1804/brower_extensions/issues/14) | None | None | Reached submit-for-review step, but submission/publication was not confirmed. | Open | Task evidence ends before confirmation; external dashboard inaccessible. |
+| 2026-09-19 | Set up Repository Context Continuity | [#1](https://github.com/xuanhao1804/brower_extensions/issues/1) | `9da7d8c`, `d15e8c3` | None | Added canonical repository context, Issue workflow/template, historical backfill and fresh-context verification. | Completed | Repository files, GitHub Issues and pushed commits. |
 
 ## Historical mapping audit
 

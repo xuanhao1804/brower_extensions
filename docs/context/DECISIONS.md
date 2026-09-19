@@ -50,4 +50,4 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Consequences:** Every repository task must read context at start, reuse its Issue for clarifications/follow-ups, update context, verify, commit, push, comment the outcome, and only then close the Issue.
 - **Related Issue:** [#1](https://github.com/xuanhao1804/brower_extensions/issues/1)
 - **Related PR:** None.
-- **Related commit:** This task's implementation commit.
+- **Related commit:** [`d15e8c3`](https://github.com/xuanhao1804/brower_extensions/commit/d15e8c3)
