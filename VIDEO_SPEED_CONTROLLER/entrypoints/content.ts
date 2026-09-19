@@ -206,12 +206,14 @@ export default defineContentScript({
           height: 36px;
           margin-left: 0;
           overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 4px;
-          background: rgba(10, 12, 16, 0.9);
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          border-radius: 7px;
+          background: rgba(10, 12, 16, 0.92);
+          box-shadow:
+            0 4px 14px rgba(0, 0, 0, 0.34),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
           pointer-events: auto;
-          transition: width 140ms ease;
+          transition: width 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .vsc-controls:hover,
@@ -228,8 +230,9 @@ export default defineContentScript({
           height: 34px;
           place-items: center;
           color: #fff;
-          font: 700 12px/1 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          font: 700 14px/1 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
           font-variant-numeric: tabular-nums;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
           cursor: pointer;
           user-select: none;
         }
@@ -243,17 +246,27 @@ export default defineContentScript({
           outline-offset: -3px;
         }
 
+        .vsc-speed {
+          background: rgba(255, 255, 255, 0.07);
+          letter-spacing: -0.2px;
+        }
+
         .vsc-side {
           flex-basis: 0;
           width: 0;
           border-left: 1px solid rgba(255, 255, 255, 0.18);
-          color: rgba(255, 255, 255, 0.82);
+          color: rgba(255, 255, 255, 0.88);
           opacity: 0;
           pointer-events: none;
           transform: scaleX(0);
           transform-origin: left;
-          transition: flex-basis 140ms ease, width 140ms ease, opacity 100ms ease,
-            transform 140ms ease;
+          transition:
+            flex-basis 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            width 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            opacity 100ms ease,
+            transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            background-color 120ms ease,
+            color 120ms ease;
         }
 
         .vsc-side:hover,
@@ -262,13 +275,20 @@ export default defineContentScript({
         }
 
         .vsc-speed-adjustment {
-          background: rgba(255, 255, 255, 0.55);
+          background: rgba(255, 255, 255, 0.66);
           color: rgba(10, 12, 16, 0.92);
+          font-size: 18px;
+          font-weight: 600;
+          text-shadow: none;
         }
 
         .vsc-speed-adjustment:hover,
         .vsc-speed-adjustment:focus-visible {
-          background: rgba(255, 255, 255, 0.78);
+          background: rgba(255, 255, 255, 0.82);
+        }
+
+        .vsc-seek {
+          letter-spacing: -1.4px;
         }
 
         .vsc-controls:hover .vsc-side,
@@ -311,7 +331,7 @@ export default defineContentScript({
 
       const rewindButton = document.createElement('button');
       rewindButton.type = 'button';
-      rewindButton.className = 'vsc-button vsc-side';
+      rewindButton.className = 'vsc-button vsc-side vsc-seek';
       rewindButton.textContent = '<<';
       rewindButton.title = `Rewind ${SEEK_STEP_SECONDS} seconds`;
       rewindButton.setAttribute(
@@ -321,7 +341,7 @@ export default defineContentScript({
 
       const forwardButton = document.createElement('button');
       forwardButton.type = 'button';
-      forwardButton.className = 'vsc-button vsc-side';
+      forwardButton.className = 'vsc-button vsc-side vsc-seek';
       forwardButton.textContent = '>>';
       forwardButton.title = `Forward ${SEEK_STEP_SECONDS} seconds`;
       forwardButton.setAttribute(
