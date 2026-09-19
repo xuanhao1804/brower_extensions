@@ -1,0 +1,53 @@
+# Durable decisions
+
+This is an ADR-lite log. New entries are appended only for decisions expected to constrain future work.
+
+## 2026-09-18 — Use a content-script-first WXT architecture
+
+- **Decision:** Build the MVP with WXT, strict TypeScript, Vanilla UI, one content script, and one popup; do not add React, a background/service worker, page-world injection, or a backend without a concrete requirement.
+- **Context:** Playback speed is a DOM `HTMLVideoElement` concern and settings/quick controls are small.
+- **Rationale:** This is the smallest architecture that meets the product requirements and avoids unnecessary lifecycle, bundle, and operational complexity.
+- **Consequences:** Popup state must live in browser storage; the popup communicates directly with content scripts. Features needing persistent coordination may justify a background entrypoint later.
+- **Related Issue:** [#2](https://github.com/xuanhao1804/brower_extensions/issues/2)
+- **Related PR:** None.
+- **Related commit:** [`de1fde9`](https://github.com/xuanhao1804/brower_extensions/commit/de1fde9117466a1cdf369ea1c587e56beea942ad)
+
+## 2026-09-18 — Store small user settings in browser sync storage
+
+- **Decision:** Keep typed, sanitized preferences in WXT's `sync:videoSpeedSettings`; represent shortcuts with `KeyboardEvent.code` plus modifiers.
+- **Context:** Settings are small, non-secret, and should follow users across browser installations when browser sync is enabled.
+- **Rationale:** Browser-managed sync storage fits the data and avoids a backend. `code` is more stable than character keys across keyboard layouts.
+- **Consequences:** Storage values are not secrets; settings schema/default changes must remain backward-tolerant through sanitization.
+- **Related Issue:** [#2](https://github.com/xuanhao1804/brower_extensions/issues/2)
+- **Related PR:** None.
+- **Related commit:** [`de1fde9`](https://github.com/xuanhao1804/brower_extensions/commit/de1fde9117466a1cdf369ea1c587e56beea942ad)
+
+## 2026-09-18 — Use broad content-script matching for the cross-site product purpose
+
+- **Decision:** Match `*://*/*` and enable `allFrames` so the extension can control HTML5 video across websites and embedded players; keep manifest permissions otherwise minimal (`storage`).
+- **Context:** The core promise is not limited to one domain, and many players are embedded in iframes.
+- **Rationale:** `activeTab` would require a user click per tab and would break automatic indicator/shortcut behavior. Domain-specific hosts would contradict the cross-site product requirement.
+- **Consequences:** Store review may be stricter; the privacy policy and listing must explain local-only processing. Do not expand permissions without feature evidence.
+- **Related Issues:** [#2](https://github.com/xuanhao1804/brower_extensions/issues/2), [#13](https://github.com/xuanhao1804/brower_extensions/issues/13)
+- **Related PR:** None.
+- **Related commit:** [`de1fde9`](https://github.com/xuanhao1804/brower_extensions/commit/de1fde9117466a1cdf369ea1c587e56beea942ad)
+
+## 2026-09-18 — Isolate and lifecycle-manage the on-video controller
+
+- **Decision:** Render the controller in closed Shadow DOM, keep one active controller per document/frame, activate real players through events/heuristics, and explicitly clean stale DOM/listeners/observers during SPA changes.
+- **Context:** Websites have conflicting CSS, dynamically replace videos, expose hover previews, and transition through invalid/off-screen layouts.
+- **Rationale:** Isolation prevents CSS collisions; event-driven lifecycle handling avoids heavy polling and duplicate overlays.
+- **Consequences:** New player integrations must preserve preview filtering, single-controller behavior, anchor validity, and cleanup invariants.
+- **Related Issues:** [#3](https://github.com/xuanhao1804/brower_extensions/issues/3), [#4](https://github.com/xuanhao1804/brower_extensions/issues/4), [#5](https://github.com/xuanhao1804/brower_extensions/issues/5), [#6](https://github.com/xuanhao1804/brower_extensions/issues/6), [#7](https://github.com/xuanhao1804/brower_extensions/issues/7)
+- **Related PR:** None.
+- **Related commits:** `5d6ed31`, `8ed87f1`, `e8edcc4`, `27d9379`, `8ee2896`, `0d5b375`.
+
+## 2026-09-19 — Make repository artifacts the continuity system
+
+- **Decision:** Use `AGENTS.md` as the mandatory entry point, `docs/context/*` as curated context, one GitHub Issue per top-level outcome, Git commits as implementation evidence, and monthly session summaries instead of chat transcripts.
+- **Context:** A new Codex task must reconstruct project state without relying on earlier chat history.
+- **Rationale:** Repository and GitHub artifacts are durable, reviewable, shareable, and independent of chat retention.
+- **Consequences:** Every repository task must read context at start, reuse its Issue for clarifications/follow-ups, update context, verify, commit, push, comment the outcome, and only then close the Issue.
+- **Related Issue:** [#1](https://github.com/xuanhao1804/brower_extensions/issues/1)
+- **Related PR:** None.
+- **Related commit:** This task's implementation commit.
