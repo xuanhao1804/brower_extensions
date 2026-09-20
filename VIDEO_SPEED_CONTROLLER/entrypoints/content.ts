@@ -13,6 +13,7 @@ const VIDEO_EDGE_OFFSET = 10;
 const TIKTOK_OVERLAY_GAP = 8;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
+let tiktokVolumeControlAnchor: HTMLElement | null = null;
 
 interface VideoController {
   video: HTMLVideoElement;
@@ -156,13 +157,13 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = getRenderedVideoContentRect(video);
-      const relatedContentBottom = getTikTokRelatedContentBottom(rect);
+      const tiktokTopControlsBottom = getTikTokTopControlsBottom(rect);
       const badgeLeft = rect.left + VIDEO_EDGE_OFFSET;
       let badgeTop = rect.top + VIDEO_EDGE_OFFSET;
-      if (relatedContentBottom !== null) {
+      if (tiktokTopControlsBottom !== null) {
         badgeTop = Math.max(
           badgeTop,
-          relatedContentBottom + TIKTOK_OVERLAY_GAP,
+          tiktokTopControlsBottom + TIKTOK_OVERLAY_GAP,
         );
       }
       const isVisible =
@@ -779,6 +780,36 @@ function getTikTokRelatedContentBottom(videoRect: LayoutRect): number | null {
     const anchor = getUsableTikTokAnchor(candidate, videoRect);
     if (!anchor) continue;
     tiktokRelatedContentAnchor = anchor;
+    return anchor.getBoundingClientRect().bottom;
+  }
+
+  return null;
+}
+
+function getTikTokTopControlsBottom(videoRect: LayoutRect): number | null {
+  if (!TIKTOK_HOST_PATTERN.test(window.location.hostname)) return null;
+
+  const relatedContentBottom = getTikTokRelatedContentBottom(videoRect);
+  const volumeControlBottom = getTikTokVolumeControlBottom(videoRect);
+  if (relatedContentBottom === null) return volumeControlBottom;
+  if (volumeControlBottom === null) return relatedContentBottom;
+  return Math.max(relatedContentBottom, volumeControlBottom);
+}
+
+function getTikTokVolumeControlBottom(videoRect: LayoutRect): number | null {
+  const cachedAnchor = getUsableTikTokAnchor(
+    tiktokVolumeControlAnchor,
+    videoRect,
+  );
+  if (cachedAnchor) return cachedAnchor.getBoundingClientRect().bottom;
+  tiktokVolumeControlAnchor = null;
+
+  for (const candidate of document.querySelectorAll<HTMLElement>(
+    '[data-key-interaction="video_mute"]',
+  )) {
+    const anchor = getUsableTikTokAnchor(candidate, videoRect);
+    if (!anchor) continue;
+    tiktokVolumeControlAnchor = anchor;
     return anchor.getBoundingClientRect().bottom;
   }
 
