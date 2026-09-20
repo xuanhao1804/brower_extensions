@@ -47,7 +47,7 @@ The content script uses DOM/event APIs directly; it does not need page-world acc
 - Maintain at most one active controller per document/frame and clean stale hosts/listeners/observers.
 - Do not activate YouTube hover previews or muted preview videos as real players.
 - Support dynamic SPA navigation, YouTube mini-player/floating players, large embedded players, and videos added after page load.
-- Keep the badge anchored to the video and hide/remove it when the anchor is invalid or off-screen.
+- Keep the badge anchored to the rendered media area (not letterbox space) and hide/remove it when the anchor is invalid or off-screen.
 - Ignore shortcuts in editable controls.
 - Clamp normalized speeds to `0.25`–`16`; sanitize all stored settings.
 - Use Shadow DOM for injected control isolation.
