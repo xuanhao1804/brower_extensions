@@ -10,8 +10,9 @@ import type { ContentMessage, VideoSpeedResponse } from '../shared/messages';
 const CONTROLLER_ATTRIBUTE = 'data-vsc-controlled';
 const SEEK_STEP_SECONDS = 10;
 const VIDEO_EDGE_OFFSET = 10;
-const NATIVE_CONTROLS_GAP = 8;
-const YOUTUBE_SHORTS_LEFT_CONTROLS_WIDTH = 86;
+const TIKTOK_OVERLAY_GAP = 8;
+const YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT = 56;
+const YOUTUBE_SHORTS_CONTROLS_GAP = 12;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
 let tiktokVolumeControlAnchor: HTMLElement | null = null;
@@ -158,16 +159,8 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = getRenderedVideoContentRect(video);
-      const topControlsBottom = getTikTokTopControlsBottom(rect);
-      const badgeLeft =
-        getYouTubeShortsBadgeLeft(video, rect) ?? rect.left + VIDEO_EDGE_OFFSET;
-      let badgeTop = rect.top + VIDEO_EDGE_OFFSET;
-      if (topControlsBottom !== null) {
-        badgeTop = Math.max(
-          badgeTop,
-          topControlsBottom + NATIVE_CONTROLS_GAP,
-        );
-      }
+      const badgeLeft = rect.left + VIDEO_EDGE_OFFSET;
+      const badgeTop = getBadgeTop(video, rect);
       const isVisible =
         rect.width >= 120 &&
         rect.height >= 68 &&
@@ -750,7 +743,31 @@ function getRenderedVideoContentRect(video: HTMLVideoElement): LayoutRect {
   return createLayoutRect(left, top, width, height);
 }
 
-function getYouTubeShortsBadgeLeft(
+function getBadgeTop(video: HTMLVideoElement, videoRect: LayoutRect): number {
+  let badgeTop = videoRect.top + VIDEO_EDGE_OFFSET;
+  const tiktokControlsBottom = getTikTokTopControlsBottom(videoRect);
+  if (tiktokControlsBottom !== null) {
+    badgeTop = Math.max(
+      badgeTop,
+      tiktokControlsBottom + TIKTOK_OVERLAY_GAP,
+    );
+  }
+
+  const youtubeShortsControlsBottom = getYouTubeShortsTopControlsBottom(
+    video,
+    videoRect,
+  );
+  if (youtubeShortsControlsBottom !== null) {
+    badgeTop = Math.max(
+      badgeTop,
+      youtubeShortsControlsBottom + YOUTUBE_SHORTS_CONTROLS_GAP,
+    );
+  }
+
+  return badgeTop;
+}
+
+function getYouTubeShortsTopControlsBottom(
   video: HTMLVideoElement,
   videoRect: LayoutRect,
 ): number | null {
@@ -762,10 +779,9 @@ function getYouTubeShortsBadgeLeft(
     return null;
   }
 
-  return (
-    videoRect.left +
-    YOUTUBE_SHORTS_LEFT_CONTROLS_WIDTH +
-    NATIVE_CONTROLS_GAP
+  return Math.min(
+    videoRect.top + YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT,
+    videoRect.bottom,
   );
 }
 
