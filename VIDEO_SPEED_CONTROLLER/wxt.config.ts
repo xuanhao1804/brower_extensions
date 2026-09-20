@@ -2,7 +2,7 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   manifest: {
-    name: 'Video Speed Controller',
+    name: 'Video Speed Pro',
     description:
       'Control HTML5 video speed with shortcuts, mouse gestures, and presets.',
     permissions: ['storage'],

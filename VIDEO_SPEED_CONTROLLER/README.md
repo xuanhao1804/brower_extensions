@@ -1,4 +1,4 @@
-# Video Speed Controller
+# Video Speed Pro
 
 Browser extension dùng để điều chỉnh tốc độ video HTML5 trên YouTube và các website khác.
 
