@@ -10,8 +10,8 @@ import type { ContentMessage, VideoSpeedResponse } from '../shared/messages';
 const CONTROLLER_ATTRIBUTE = 'data-vsc-controlled';
 const SEEK_STEP_SECONDS = 10;
 const VIDEO_EDGE_OFFSET = 10;
-const TOP_CONTROLS_GAP = 8;
-const YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT = 48;
+const NATIVE_CONTROLS_GAP = 8;
+const YOUTUBE_SHORTS_LEFT_CONTROLS_WIDTH = 86;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
 let tiktokVolumeControlAnchor: HTMLElement | null = null;
@@ -158,13 +158,14 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = getRenderedVideoContentRect(video);
-      const topControlsBottom = getTopControlsBottom(video, rect);
-      const badgeLeft = rect.left + VIDEO_EDGE_OFFSET;
+      const topControlsBottom = getTikTokTopControlsBottom(rect);
+      const badgeLeft =
+        getYouTubeShortsBadgeLeft(video, rect) ?? rect.left + VIDEO_EDGE_OFFSET;
       let badgeTop = rect.top + VIDEO_EDGE_OFFSET;
       if (topControlsBottom !== null) {
         badgeTop = Math.max(
           badgeTop,
-          topControlsBottom + TOP_CONTROLS_GAP,
+          topControlsBottom + NATIVE_CONTROLS_GAP,
         );
       }
       const isVisible =
@@ -749,17 +750,7 @@ function getRenderedVideoContentRect(video: HTMLVideoElement): LayoutRect {
   return createLayoutRect(left, top, width, height);
 }
 
-function getTopControlsBottom(
-  video: HTMLVideoElement,
-  videoRect: LayoutRect,
-): number | null {
-  return (
-    getTikTokTopControlsBottom(videoRect) ??
-    getYouTubeShortsTopControlsBottom(video, videoRect)
-  );
-}
-
-function getYouTubeShortsTopControlsBottom(
+function getYouTubeShortsBadgeLeft(
   video: HTMLVideoElement,
   videoRect: LayoutRect,
 ): number | null {
@@ -771,9 +762,10 @@ function getYouTubeShortsTopControlsBottom(
     return null;
   }
 
-  return Math.min(
-    videoRect.top + YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT,
-    videoRect.bottom,
+  return (
+    videoRect.left +
+    YOUTUBE_SHORTS_LEFT_CONTROLS_WIDTH +
+    NATIVE_CONTROLS_GAP
   );
 }
 
