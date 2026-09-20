@@ -13,6 +13,7 @@ const VIDEO_EDGE_OFFSET = 10;
 const TIKTOK_OVERLAY_GAP = 8;
 const YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT = 56;
 const YOUTUBE_SHORTS_CONTROLS_GAP = 12;
+const YOUTUBE_MINIPLAYER_CONTROLS_GAP = 8;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
 let tiktokVolumeControlAnchor: HTMLElement | null = null;
@@ -764,7 +765,46 @@ function getBadgeTop(video: HTMLVideoElement, videoRect: LayoutRect): number {
     );
   }
 
+  const youtubeMiniPlayerControlsBottom =
+    getYouTubeMiniPlayerExpandButtonBottom(video, videoRect);
+  if (youtubeMiniPlayerControlsBottom !== null) {
+    badgeTop = Math.max(
+      badgeTop,
+      youtubeMiniPlayerControlsBottom + YOUTUBE_MINIPLAYER_CONTROLS_GAP,
+    );
+  }
+
   return badgeTop;
+}
+
+function getYouTubeMiniPlayerExpandButtonBottom(
+  video: HTMLVideoElement,
+  videoRect: LayoutRect,
+): number | null {
+  if (!isYouTubeSite() || !isYouTubeMiniPlayer(video)) return null;
+
+  const player = video.closest<HTMLElement>('.html5-video-player');
+  const expandButton = player?.querySelector<HTMLElement>(
+    '.ytp-miniplayer-expand-watch-page-button',
+  );
+  if (!expandButton?.isConnected) return null;
+
+  const rect = expandButton.getBoundingClientRect();
+  const style = getComputedStyle(expandButton);
+  const topRegionBottom = videoRect.top + Math.min(120, videoRect.height * 0.5);
+  const overlapsVideoHorizontally =
+    rect.right > videoRect.left && rect.left < videoRect.right;
+  const isInVideoTopRegion =
+    rect.top >= videoRect.top - 1 && rect.bottom <= topRegionBottom;
+  const occupiesSpace =
+    rect.width > 0 &&
+    rect.height > 0 &&
+    style.display !== 'none' &&
+    style.visibility !== 'hidden';
+
+  return occupiesSpace && overlapsVideoHorizontally && isInVideoTopRegion
+    ? rect.bottom
+    : null;
 }
 
 function getYouTubeShortsTopControlsBottom(
