@@ -10,7 +10,8 @@ import type { ContentMessage, VideoSpeedResponse } from '../shared/messages';
 const CONTROLLER_ATTRIBUTE = 'data-vsc-controlled';
 const SEEK_STEP_SECONDS = 10;
 const VIDEO_EDGE_OFFSET = 10;
-const TIKTOK_OVERLAY_GAP = 8;
+const TOP_CONTROLS_GAP = 8;
+const YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT = 48;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
 let tiktokVolumeControlAnchor: HTMLElement | null = null;
@@ -157,13 +158,13 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = getRenderedVideoContentRect(video);
-      const tiktokTopControlsBottom = getTikTokTopControlsBottom(rect);
+      const topControlsBottom = getTopControlsBottom(video, rect);
       const badgeLeft = rect.left + VIDEO_EDGE_OFFSET;
       let badgeTop = rect.top + VIDEO_EDGE_OFFSET;
-      if (tiktokTopControlsBottom !== null) {
+      if (topControlsBottom !== null) {
         badgeTop = Math.max(
           badgeTop,
-          tiktokTopControlsBottom + TIKTOK_OVERLAY_GAP,
+          topControlsBottom + TOP_CONTROLS_GAP,
         );
       }
       const isVisible =
@@ -746,6 +747,34 @@ function getRenderedVideoContentRect(video: HTMLVideoElement): LayoutRect {
     getObjectPositionOffset(positionY, contentRect.height - height, 'top', 'bottom');
 
   return createLayoutRect(left, top, width, height);
+}
+
+function getTopControlsBottom(
+  video: HTMLVideoElement,
+  videoRect: LayoutRect,
+): number | null {
+  return (
+    getTikTokTopControlsBottom(videoRect) ??
+    getYouTubeShortsTopControlsBottom(video, videoRect)
+  );
+}
+
+function getYouTubeShortsTopControlsBottom(
+  video: HTMLVideoElement,
+  videoRect: LayoutRect,
+): number | null {
+  if (
+    !YOUTUBE_HOST_PATTERN.test(window.location.hostname) ||
+    !window.location.pathname.startsWith('/shorts/') ||
+    !video.closest('#shorts-player')
+  ) {
+    return null;
+  }
+
+  return Math.min(
+    videoRect.top + YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT,
+    videoRect.bottom,
+  );
 }
 
 function getTikTokRelatedContentBottom(videoRect: LayoutRect): number | null {
