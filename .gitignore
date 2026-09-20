@@ -1,0 +1,10 @@
+node_modules/
+.wxt/
+.output/
+.autohand/
+.claude/
+skills-lock.json
+*.zip
+*.pem
+.agents
+AGENTS.md
