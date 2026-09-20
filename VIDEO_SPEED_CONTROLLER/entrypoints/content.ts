@@ -9,6 +9,10 @@ import type { ContentMessage, VideoSpeedResponse } from '../shared/messages';
 
 const CONTROLLER_ATTRIBUTE = 'data-vsc-controlled';
 const SEEK_STEP_SECONDS = 10;
+const VIDEO_EDGE_OFFSET = 10;
+const TIKTOK_OVERLAY_GAP = 8;
+
+let tiktokRelatedContentAnchor: HTMLElement | null = null;
 
 interface VideoController {
   video: HTMLVideoElement;
@@ -151,9 +155,16 @@ export default defineContentScript({
           : document.documentElement;
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
-      const rect = video.getBoundingClientRect();
-      const badgeLeft = rect.left + 10;
-      const badgeTop = rect.top + 10;
+      const rect = getRenderedVideoContentRect(video);
+      const relatedContentBottom = getTikTokRelatedContentBottom(rect);
+      const badgeLeft = rect.left + VIDEO_EDGE_OFFSET;
+      let badgeTop = rect.top + VIDEO_EDGE_OFFSET;
+      if (relatedContentBottom !== null) {
+        badgeTop = Math.max(
+          badgeTop,
+          relatedContentBottom + TIKTOK_OVERLAY_GAP,
+        );
+      }
       const isVisible =
         rect.width >= 120 &&
         rect.height >= 68 &&
@@ -657,6 +668,7 @@ export default defineContentScript({
 });
 
 const YOUTUBE_HOST_PATTERN = /(^|\.)youtube(?:-nocookie)?\.com$/i;
+const TIKTOK_HOST_PATTERN = /(^|\.)tiktok\.com$/i;
 const YOUTUBE_PLAYER_PATH_PATTERN =
   /^\/(?:watch(?:\/|$)|shorts(?:\/|$)|embed(?:\/|$)|live(?:\/|$))/;
 const YOUTUBE_PREVIEW_SELECTOR = [
@@ -677,6 +689,182 @@ const KNOWN_PLAYER_SELECTOR = [
   '[data-vjs-player]',
 ].join(',');
 const KNOWN_PLAYER_VIDEO_SELECTOR = '.jw-video, .vjs-tech, .shaka-video';
+
+interface LayoutRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+function getRenderedVideoContentRect(video: HTMLVideoElement): LayoutRect {
+  const elementRect = video.getBoundingClientRect();
+  const style = getComputedStyle(video);
+  const leftInset =
+    getPixelValue(style.borderLeftWidth) + getPixelValue(style.paddingLeft);
+  const rightInset =
+    getPixelValue(style.borderRightWidth) + getPixelValue(style.paddingRight);
+  const topInset = getPixelValue(style.borderTopWidth) + getPixelValue(style.paddingTop);
+  const bottomInset =
+    getPixelValue(style.borderBottomWidth) + getPixelValue(style.paddingBottom);
+  const contentRect = createLayoutRect(
+    elementRect.left + leftInset,
+    elementRect.top + topInset,
+    Math.max(0, elementRect.width - leftInset - rightInset),
+    Math.max(0, elementRect.height - topInset - bottomInset),
+  );
+
+  if (
+    (style.objectFit !== 'contain' && style.objectFit !== 'scale-down') ||
+    video.videoWidth <= 0 ||
+    video.videoHeight <= 0 ||
+    contentRect.width <= 0 ||
+    contentRect.height <= 0
+  ) {
+    return contentRect;
+  }
+
+  const containScale = Math.min(
+    contentRect.width / video.videoWidth,
+    contentRect.height / video.videoHeight,
+  );
+  const scale =
+    style.objectFit === 'scale-down' ? Math.min(1, containScale) : containScale;
+  const width = video.videoWidth * scale;
+  const height = video.videoHeight * scale;
+  const [positionX = '50%', positionY = '50%'] = style.objectPosition
+    .trim()
+    .split(/\s+/);
+  const left =
+    contentRect.left +
+    getObjectPositionOffset(positionX, contentRect.width - width, 'left', 'right');
+  const top =
+    contentRect.top +
+    getObjectPositionOffset(positionY, contentRect.height - height, 'top', 'bottom');
+
+  return createLayoutRect(left, top, width, height);
+}
+
+function getTikTokRelatedContentBottom(videoRect: LayoutRect): number | null {
+  if (!TIKTOK_HOST_PATTERN.test(window.location.hostname)) return null;
+
+  const cachedAnchor = getUsableTikTokAnchor(tiktokRelatedContentAnchor, videoRect);
+  if (cachedAnchor) return cachedAnchor.getBoundingClientRect().bottom;
+  tiktokRelatedContentAnchor = null;
+
+  const candidates = new Set<HTMLElement>();
+  document
+    .querySelectorAll<HTMLElement>(
+      [
+        'input[placeholder*="related content" i]',
+        '[aria-label*="related content" i]',
+        '[data-e2e*="related-content" i]',
+      ].join(','),
+    )
+    .forEach((element) => candidates.add(element));
+
+  if (candidates.size === 0) {
+    if (!document.body) return null;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      if (node.textContent?.trim().toLowerCase() !== 'find related content') continue;
+      if (node.parentElement) candidates.add(node.parentElement);
+    }
+  }
+
+  for (const candidate of candidates) {
+    const anchor = getUsableTikTokAnchor(candidate, videoRect);
+    if (!anchor) continue;
+    tiktokRelatedContentAnchor = anchor;
+    return anchor.getBoundingClientRect().bottom;
+  }
+
+  return null;
+}
+
+function getUsableTikTokAnchor(
+  candidate: HTMLElement | null,
+  videoRect: LayoutRect,
+): HTMLElement | null {
+  if (!candidate?.isConnected) return null;
+
+  let anchor = candidate;
+  let current: HTMLElement | null = candidate;
+  for (let depth = 0; current && depth < 5; depth += 1) {
+    const rect = current.getBoundingClientRect();
+    if (
+      rect.width >= 160 &&
+      rect.width <= videoRect.width + 4 &&
+      rect.height >= 24 &&
+      rect.height <= 90
+    ) {
+      anchor = current;
+    }
+    current = current.parentElement;
+  }
+
+  const rect = anchor.getBoundingClientRect();
+  const style = getComputedStyle(anchor);
+  const topRegionBottom = videoRect.top + Math.min(180, videoRect.height * 0.25);
+  const overlapsVideoHorizontally =
+    rect.right > videoRect.left && rect.left < videoRect.right;
+  const isInVideoTopRegion =
+    rect.top >= videoRect.top - 1 && rect.bottom <= topRegionBottom;
+  const isVisible =
+    rect.width > 0 &&
+    rect.height > 0 &&
+    style.display !== 'none' &&
+    style.visibility !== 'hidden' &&
+    Number.parseFloat(style.opacity || '1') > 0;
+
+  return isVisible && overlapsVideoHorizontally && isInVideoTopRegion
+    ? anchor
+    : null;
+}
+
+function getObjectPositionOffset(
+  value: string,
+  freeSpace: number,
+  startKeyword: 'left' | 'top',
+  endKeyword: 'right' | 'bottom',
+): number {
+  if (value === startKeyword) return 0;
+  if (value === 'center') return freeSpace / 2;
+  if (value === endKeyword) return freeSpace;
+  if (value.endsWith('%')) {
+    const percentage = Number.parseFloat(value);
+    if (Number.isFinite(percentage)) return freeSpace * (percentage / 100);
+  }
+  if (value.endsWith('px')) {
+    const pixels = Number.parseFloat(value);
+    if (Number.isFinite(pixels)) return pixels;
+  }
+  return freeSpace / 2;
+}
+
+function getPixelValue(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function createLayoutRect(
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+): LayoutRect {
+  return {
+    left,
+    top,
+    right: left + width,
+    bottom: top + height,
+    width,
+    height,
+  };
+}
 
 function isYouTubeSite(): boolean {
   return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
