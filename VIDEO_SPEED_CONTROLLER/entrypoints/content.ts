@@ -9,11 +9,10 @@ import type { ContentMessage, VideoSpeedResponse } from '../shared/messages';
 
 const CONTROLLER_ATTRIBUTE = 'data-vsc-controlled';
 const SEEK_STEP_SECONDS = 10;
+const CONTROLLER_COLLAPSED_SIZE = 36;
 const VIDEO_EDGE_OFFSET = 10;
 const TIKTOK_OVERLAY_GAP = 8;
-const YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT = 56;
-const YOUTUBE_SHORTS_CONTROLS_GAP = 12;
-const YOUTUBE_MINIPLAYER_CONTROLS_GAP = 8;
+const YOUTUBE_COMPACT_BOTTOM_PADDING = 14;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
 let tiktokVolumeControlAnchor: HTMLElement | null = null;
@@ -210,8 +209,8 @@ export default defineContentScript({
         .vsc-controls {
           box-sizing: border-box;
           display: flex;
-          width: 36px;
-          height: 36px;
+          width: ${CONTROLLER_COLLAPSED_SIZE}px;
+          height: ${CONTROLLER_COLLAPSED_SIZE}px;
           margin-left: 0;
           overflow: hidden;
           border: 1px solid rgba(255, 255, 255, 0.28);
@@ -745,6 +744,15 @@ function getRenderedVideoContentRect(video: HTMLVideoElement): LayoutRect {
 }
 
 function getBadgeTop(video: HTMLVideoElement, videoRect: LayoutRect): number {
+  if (usesYouTubeBottomLeftBadge(video)) {
+    return Math.max(
+      videoRect.top + VIDEO_EDGE_OFFSET,
+      videoRect.bottom -
+        CONTROLLER_COLLAPSED_SIZE -
+        YOUTUBE_COMPACT_BOTTOM_PADDING,
+    );
+  }
+
   let badgeTop = videoRect.top + VIDEO_EDGE_OFFSET;
   const tiktokControlsBottom = getTikTokTopControlsBottom(videoRect);
   if (tiktokControlsBottom !== null) {
@@ -754,75 +762,17 @@ function getBadgeTop(video: HTMLVideoElement, videoRect: LayoutRect): number {
     );
   }
 
-  const youtubeShortsControlsBottom = getYouTubeShortsTopControlsBottom(
-    video,
-    videoRect,
-  );
-  if (youtubeShortsControlsBottom !== null) {
-    badgeTop = Math.max(
-      badgeTop,
-      youtubeShortsControlsBottom + YOUTUBE_SHORTS_CONTROLS_GAP,
-    );
-  }
-
-  const youtubeMiniPlayerControlsBottom =
-    getYouTubeMiniPlayerExpandButtonBottom(video, videoRect);
-  if (youtubeMiniPlayerControlsBottom !== null) {
-    badgeTop = Math.max(
-      badgeTop,
-      youtubeMiniPlayerControlsBottom + YOUTUBE_MINIPLAYER_CONTROLS_GAP,
-    );
-  }
-
   return badgeTop;
 }
 
-function getYouTubeMiniPlayerExpandButtonBottom(
-  video: HTMLVideoElement,
-  videoRect: LayoutRect,
-): number | null {
-  if (!isYouTubeSite() || !isYouTubeMiniPlayer(video)) return null;
+function usesYouTubeBottomLeftBadge(video: HTMLVideoElement): boolean {
+  if (!isYouTubeSite()) return false;
 
-  const player = video.closest<HTMLElement>('.html5-video-player');
-  const expandButton = player?.querySelector<HTMLElement>(
-    '.ytp-miniplayer-expand-watch-page-button',
-  );
-  if (!expandButton?.isConnected) return null;
+  const isShortsPlayer =
+    window.location.pathname.startsWith('/shorts/') &&
+    Boolean(video.closest('#shorts-player'));
 
-  const rect = expandButton.getBoundingClientRect();
-  const style = getComputedStyle(expandButton);
-  const topRegionBottom = videoRect.top + Math.min(120, videoRect.height * 0.5);
-  const overlapsVideoHorizontally =
-    rect.right > videoRect.left && rect.left < videoRect.right;
-  const isInVideoTopRegion =
-    rect.top >= videoRect.top - 1 && rect.bottom <= topRegionBottom;
-  const occupiesSpace =
-    rect.width > 0 &&
-    rect.height > 0 &&
-    style.display !== 'none' &&
-    style.visibility !== 'hidden';
-
-  return occupiesSpace && overlapsVideoHorizontally && isInVideoTopRegion
-    ? rect.bottom
-    : null;
-}
-
-function getYouTubeShortsTopControlsBottom(
-  video: HTMLVideoElement,
-  videoRect: LayoutRect,
-): number | null {
-  if (
-    !YOUTUBE_HOST_PATTERN.test(window.location.hostname) ||
-    !window.location.pathname.startsWith('/shorts/') ||
-    !video.closest('#shorts-player')
-  ) {
-    return null;
-  }
-
-  return Math.min(
-    videoRect.top + YOUTUBE_SHORTS_TOP_CONTROLS_HEIGHT,
-    videoRect.bottom,
-  );
+  return isShortsPlayer || isYouTubeMiniPlayer(video);
 }
 
 function getTikTokRelatedContentBottom(videoRect: LayoutRect): number | null {
