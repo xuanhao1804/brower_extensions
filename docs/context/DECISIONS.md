@@ -51,3 +51,13 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Related Issue:** [#1](https://github.com/xuanhao1804/brower_extensions/issues/1)
 - **Related PR:** None.
 - **Related commit:** [`d15e8c3`](https://github.com/xuanhao1804/brower_extensions/commit/d15e8c3)
+
+## 2026-09-23 — Use Speedable as the public product brand
+
+- **Decision:** Use `Speedable` as the short UI brand and `Speedable — Video Speed Controller` as the manifest and Store-facing title; retain existing extension identifiers and storage keys.
+- **Context:** The prior `Video Speed Pro` title collided with an older Store listing and was difficult to distinguish in search.
+- **Rationale:** A compact brand improves recognition while the descriptive suffix preserves the primary discovery keyword and clearly states the extension's purpose.
+- **Consequences:** Product-facing copy, packages and future Store assets must use the new brand. Renaming must not create a new Store item, Firefox identity or settings namespace.
+- **Related Issue:** [#19](https://github.com/xuanhao1804/brower_extensions/issues/19)
+- **Related PR:** None.
+- **Related commit:** [`50c3d53`](https://github.com/xuanhao1804/brower_extensions/commit/50c3d53)

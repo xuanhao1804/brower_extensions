@@ -1,10 +1,10 @@
 # Project context
 
-Last verified: 2026-09-20
+Last verified: 2026-09-23
 
 ## Purpose and product
 
-This repository currently contains **Video Speed Pro**, a browser extension for controlling HTML5 video playback speed on YouTube and other websites. Users can configure keyboard shortcuts, mouse-wheel behavior, default speed, speed steps, presets, and an on-video controller with fixed 10-second rewind/forward actions.
+This repository currently contains **Speedable — Video Speed Controller**, a browser extension for controlling HTML5 video playback speed on YouTube and other websites. Users can configure keyboard shortcuts, mouse-wheel behavior, default speed, speed steps, presets, and an on-video controller with fixed 10-second rewind/forward actions.
 
 The GitHub repository is `xuanhao1804/brower_extensions` (the remote name contains the historical `brower` spelling). Product source lives under `VIDEO_SPEED_CONTROLLER/`.
 
