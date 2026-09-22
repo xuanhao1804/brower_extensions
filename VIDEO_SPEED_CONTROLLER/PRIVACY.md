@@ -1,14 +1,14 @@
-# Privacy Policy for Video Speed Pro
+# Privacy Policy for Speedable — Video Speed Controller
 
 Effective date: September 18, 2026
 
-Video Speed Pro is a browser extension that lets users control the
+Speedable — Video Speed Controller is a browser extension that lets users control the
 playback speed of HTML5 videos with keyboard shortcuts, mouse gestures, speed
 presets, and an on-video controller.
 
 ## Data collection
 
-Video Speed Pro does not collect, transmit, sell, or share personal
+Speedable — Video Speed Controller does not collect, transmit, sell, or share personal
 information, browsing history, website content, authentication information, or
 analytics data.
 

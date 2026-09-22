@@ -81,7 +81,7 @@ export default defineContentScript({
       try {
         video.playbackRate = speed;
       } catch (error) {
-        console.warn('[Video Speed Pro] Không thể đổi tốc độ video.', error);
+        console.warn('[Speedable] Không thể đổi tốc độ video.', error);
         return video.playbackRate;
       }
       updateBadge(controllers.get(video));
@@ -106,7 +106,7 @@ export default defineContentScript({
       try {
         video.currentTime = requestedTime;
       } catch (error) {
-        console.warn('[Video Speed Pro] Không thể tua video.', error);
+        console.warn('[Speedable] Không thể tua video.', error);
       }
     }
 
