@@ -13,6 +13,7 @@ const CONTROLLER_COLLAPSED_SIZE = 36;
 const VIDEO_EDGE_OFFSET = 10;
 const TIKTOK_OVERLAY_GAP = 8;
 const YOUTUBE_COMPACT_BOTTOM_PADDING = 14;
+const FACEBOOK_REEL_BOTTOM_PADDING = 18;
 
 let tiktokRelatedContentAnchor: HTMLElement | null = null;
 let tiktokVolumeControlAnchor: HTMLElement | null = null;
@@ -159,8 +160,18 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = getRenderedVideoContentRect(video);
-      const badgeLeft = rect.left + VIDEO_EDGE_OFFSET;
-      const badgeTop = getBadgeTop(video, rect);
+      const usesFacebookReelLayout = isFacebookReelPage();
+      const badgeLeft = usesFacebookReelLayout
+        ? rect.right - CONTROLLER_COLLAPSED_SIZE - VIDEO_EDGE_OFFSET
+        : rect.left + VIDEO_EDGE_OFFSET;
+      const badgeTop = usesFacebookReelLayout
+        ? Math.max(
+            rect.top + VIDEO_EDGE_OFFSET,
+            rect.bottom -
+              CONTROLLER_COLLAPSED_SIZE -
+              FACEBOOK_REEL_BOTTOM_PADDING,
+          )
+        : getBadgeTop(video, rect);
       const isVisible =
         rect.width >= 120 &&
         rect.height >= 68 &&
@@ -174,7 +185,11 @@ export default defineContentScript({
         badgeTop < window.innerHeight;
 
       host.style.visibility = isVisible ? 'visible' : 'hidden';
-      host.style.left = `${badgeLeft}px`;
+      host.toggleAttribute('data-vsc-expand-left', usesFacebookReelLayout);
+      host.style.left = usesFacebookReelLayout ? 'auto' : `${badgeLeft}px`;
+      host.style.right = usesFacebookReelLayout
+        ? `${window.innerWidth - rect.right + VIDEO_EDGE_OFFSET}px`
+        : 'auto';
       host.style.top = `${badgeTop}px`;
     }
 
@@ -226,6 +241,16 @@ export default defineContentScript({
         .vsc-controls:hover,
         .vsc-controls:focus-within {
           width: 172px;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-controls {
+          flex-direction: row-reverse;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-side {
+          border-right: 1px solid rgba(255, 255, 255, 0.18);
+          border-left: 0;
+          transform-origin: right;
         }
 
         .vsc-button {
@@ -665,6 +690,8 @@ export default defineContentScript({
 
 const YOUTUBE_HOST_PATTERN = /(^|\.)youtube(?:-nocookie)?\.com$/i;
 const TIKTOK_HOST_PATTERN = /(^|\.)tiktok\.com$/i;
+const FACEBOOK_HOST_PATTERN = /(^|\.)facebook\.com$/i;
+const FACEBOOK_REEL_PATH_PATTERN = /^\/reels?(?:\/|$)/i;
 const YOUTUBE_PLAYER_PATH_PATTERN =
   /^\/(?:watch(?:\/|$)|shorts(?:\/|$)|embed(?:\/|$)|live(?:\/|$))/;
 const YOUTUBE_PREVIEW_SELECTOR = [
@@ -926,6 +953,13 @@ function createLayoutRect(
 
 function isYouTubeSite(): boolean {
   return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
+}
+
+function isFacebookReelPage(): boolean {
+  return (
+    FACEBOOK_HOST_PATTERN.test(window.location.hostname) &&
+    FACEBOOK_REEL_PATH_PATTERN.test(window.location.pathname)
+  );
 }
 
 function isYouTubePlaybackPage(): boolean {
