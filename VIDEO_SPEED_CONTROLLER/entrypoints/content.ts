@@ -468,7 +468,11 @@ export default defineContentScript({
 
       controllers.set(video, controller);
       activeVideo = video;
-      setSpeed(video, settings.defaultSpeed);
+      const initialSpeed =
+        settings.defaultSpeed !== 1
+          ? settings.defaultSpeed
+          : (video.playbackRate || 1);
+      setSpeed(video, initialSpeed);
       updateBadge(controller);
       return controller;
     }
@@ -526,8 +530,13 @@ export default defineContentScript({
     }
 
     function removeVideosFrom(root: Element): void {
-      if (root instanceof HTMLVideoElement) removeObservedVideo(root);
-      root.querySelectorAll('video').forEach(removeObservedVideo);
+      if (root instanceof HTMLVideoElement) {
+        if (!root.isConnected) removeObservedVideo(root);
+        return;
+      }
+      root.querySelectorAll('video').forEach((video) => {
+        if (!video.isConnected) removeObservedVideo(video);
+      });
     }
 
     function reconcileVideos(): void {

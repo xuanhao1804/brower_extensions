@@ -61,3 +61,13 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Related Issue:** [#19](https://github.com/xuanhao1804/brower_extensions/issues/19)
 - **Related PR:** None.
 - **Related commit:** [`50c3d53`](https://github.com/xuanhao1804/brower_extensions/commit/50c3d53)
+
+## 2026-09-26 — Preserve video controllers and playback rate across DOM re-parenting
+
+- **Decision:** In `MutationObserver` removal processing, verify `!video.isConnected` before tearing down an observed video or controller; in `activateVideo`, retain existing `video.playbackRate` when `settings.defaultSpeed` is `1`.
+- **Context:** Sites like YouTube move player containers (`#player-container`) between DOM parents when toggling fullscreen or theater mode. MutationObserver batches report these as `removedNodes` followed by `addedNodes`.
+- **Rationale:** Tearing down and recreating controllers on re-parented videos caused `video.playbackRate` to be unconditionally reset to `settings.defaultSpeed` (1x). Checking connection prevents destructive lifecycle churning.
+- **Consequences:** Video controllers, event listeners, and custom speeds survive fullscreen and view-mode toggles without resetting.
+- **Related Issue:** [#21](https://github.com/xuanhao1804/brower_extensions/issues/21)
+- **Related PR:** None.
+- **Related commit:** To be recorded in task commit.
