@@ -70,4 +70,4 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Consequences:** Video controllers, event listeners, and custom speeds survive fullscreen and view-mode toggles without resetting.
 - **Related Issue:** [#21](https://github.com/xuanhao1804/brower_extensions/issues/21)
 - **Related PR:** None.
-- **Related commit:** To be recorded in task commit.
+- **Related commit:** [`ee85425`](https://github.com/xuanhao1804/brower_extensions/commit/ee85425)
