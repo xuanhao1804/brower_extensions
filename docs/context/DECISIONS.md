@@ -71,3 +71,14 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Related Issue:** [#21](https://github.com/xuanhao1804/brower_extensions/issues/21)
 - **Related PR:** None.
 - **Related commit:** [`ee85425`](https://github.com/xuanhao1804/brower_extensions/commit/ee85425)
+
+## 2026-09-26 — Correct expand-left button layout order and track active playback speed
+
+- **Decision:** Use CSS `order` (`order: 1` on `.vsc-speed`, `order: 2` on `.vsc-forward`, `order: 3` on `.vsc-increase`, `order: 4` on `.vsc-decrease`, `order: 5` on `.vsc-rewind`) under `:host([data-vsc-expand-left])` so that inside a `flex-direction: row-reverse` container the visual left-to-right order remains `[ << ] [ − ] [ + ] [ >> ] [ x1 ]`. Track `lastUserSpeed` in `content.ts` and re-apply it on `fullscreenchange` and controller activation to withstand player speed resets on Facebook and YouTube.
+- **Context:** Placing the Facebook Reel indicator at the bottom-right and expanding leftwards via `flex-direction: row-reverse` reversed the DOM button order, producing `[ >> ] [ + ] [ − ] [ << ] [ x1 ]`. Additionally, Facebook and other sites re-render or re-initialize player components when entering/exiting fullscreen.
+- **Rationale:** CSS `order` controls visual order without changing DOM structure or keyboard navigation semantics. Tracking user-set speed in the session prevents sites' internal player resets from overriding user preference.
+- **Consequences:** Layout is consistent whether expanding left or right; fullscreen transitions across YouTube and Facebook maintain selected speed.
+- **Related Issue:** [#22](https://github.com/xuanhao1804/brower_extensions/issues/22)
+- **Related PR:** None.
+- **Related commit:** Pending.
+

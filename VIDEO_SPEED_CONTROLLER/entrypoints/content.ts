@@ -42,6 +42,7 @@ export default defineContentScript({
     let settings = sanitizeSettings(await settingsStorage.getValue());
     let activeVideo: HTMLVideoElement | null = null;
     let layoutFrame: number | null = null;
+    let lastUserSpeed: number = settings.defaultSpeed;
     const controllers = new Map<HTMLVideoElement, VideoController>();
     const observedVideos = new Map<HTMLVideoElement, ObservedVideo>();
 
@@ -79,6 +80,7 @@ export default defineContentScript({
 
     function setSpeed(video: HTMLVideoElement, requestedSpeed: number): number {
       const speed = normalizeSpeed(requestedSpeed);
+      lastUserSpeed = speed;
       try {
         video.playbackRate = speed;
       } catch (error) {
@@ -160,7 +162,7 @@ export default defineContentScript({
       if (host.parentElement !== mountTarget) mountTarget.append(host);
 
       const rect = getRenderedVideoContentRect(video);
-      const usesFacebookReelLayout = isFacebookReelPage();
+      const usesFacebookReelLayout = isFacebookReelPage(video);
       const badgeLeft = usesFacebookReelLayout
         ? rect.right - CONTROLLER_COLLAPSED_SIZE - VIDEO_EDGE_OFFSET
         : rect.left + VIDEO_EDGE_OFFSET;
@@ -245,6 +247,26 @@ export default defineContentScript({
 
         :host([data-vsc-expand-left]) .vsc-controls {
           flex-direction: row-reverse;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-speed {
+          order: 1;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-forward {
+          order: 2;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-increase {
+          order: 3;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-decrease {
+          order: 4;
+        }
+
+        :host([data-vsc-expand-left]) .vsc-rewind {
+          order: 5;
         }
 
         :host([data-vsc-expand-left]) .vsc-side {
@@ -345,7 +367,8 @@ export default defineContentScript({
 
       const decreaseButton = document.createElement('button');
       decreaseButton.type = 'button';
-      decreaseButton.className = 'vsc-button vsc-side vsc-speed-adjustment';
+      decreaseButton.className =
+        'vsc-button vsc-side vsc-speed-adjustment vsc-decrease';
       decreaseButton.textContent = '−';
       decreaseButton.title = 'Decrease speed';
       decreaseButton.setAttribute('aria-label', 'Decrease speed');
@@ -356,14 +379,15 @@ export default defineContentScript({
 
       const increaseButton = document.createElement('button');
       increaseButton.type = 'button';
-      increaseButton.className = 'vsc-button vsc-side vsc-speed-adjustment';
+      increaseButton.className =
+        'vsc-button vsc-side vsc-speed-adjustment vsc-increase';
       increaseButton.textContent = '+';
       increaseButton.title = 'Increase speed';
       increaseButton.setAttribute('aria-label', 'Increase speed');
 
       const rewindButton = document.createElement('button');
       rewindButton.type = 'button';
-      rewindButton.className = 'vsc-button vsc-side vsc-seek';
+      rewindButton.className = 'vsc-button vsc-side vsc-seek vsc-rewind';
       rewindButton.textContent = '<<';
       rewindButton.title = `Rewind ${SEEK_STEP_SECONDS} seconds`;
       rewindButton.setAttribute(
@@ -373,7 +397,7 @@ export default defineContentScript({
 
       const forwardButton = document.createElement('button');
       forwardButton.type = 'button';
-      forwardButton.className = 'vsc-button vsc-side vsc-seek';
+      forwardButton.className = 'vsc-button vsc-side vsc-seek vsc-forward';
       forwardButton.textContent = '>>';
       forwardButton.title = `Forward ${SEEK_STEP_SECONDS} seconds`;
       forwardButton.setAttribute(
@@ -469,9 +493,11 @@ export default defineContentScript({
       controllers.set(video, controller);
       activeVideo = video;
       const initialSpeed =
-        settings.defaultSpeed !== 1
-          ? settings.defaultSpeed
-          : (video.playbackRate || 1);
+        lastUserSpeed !== settings.defaultSpeed
+          ? lastUserSpeed
+          : settings.defaultSpeed !== 1
+            ? settings.defaultSpeed
+            : (video.playbackRate || 1);
       setSpeed(video, initialSpeed);
       updateBadge(controller);
       return controller;
@@ -655,8 +681,21 @@ export default defineContentScript({
 
     ctx.addEventListener(window, 'resize', scheduleLayout);
     ctx.addEventListener(window, 'scroll', scheduleLayout, true);
-    ctx.addEventListener(document, 'fullscreenchange', scheduleLayout);
-    ctx.addEventListener(document, 'yt-navigate-start', clearYouTubeControllers);
+    ctx.addEventListener(document, 'fullscreenchange', () => {
+      scheduleLayout();
+      const video = getBestVideo();
+      if (
+        video &&
+        lastUserSpeed !== settings.defaultSpeed &&
+        video.playbackRate !== lastUserSpeed
+      ) {
+        setSpeed(video, lastUserSpeed);
+      }
+    });
+    ctx.addEventListener(document, 'yt-navigate-start', () => {
+      clearYouTubeControllers();
+      lastUserSpeed = settings.defaultSpeed;
+    });
     ctx.addEventListener(document, 'yt-navigate-finish', reconcileVideos);
     ctx.addEventListener(document, 'yt-page-data-updated', reconcileVideos);
     ctx.addEventListener(window, 'popstate', reconcileVideos);
@@ -964,11 +1003,16 @@ function isYouTubeSite(): boolean {
   return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
 }
 
-function isFacebookReelPage(): boolean {
-  return (
-    FACEBOOK_HOST_PATTERN.test(window.location.hostname) &&
-    FACEBOOK_REEL_PATH_PATTERN.test(window.location.pathname)
-  );
+function isFacebookReelPage(video?: HTMLVideoElement): boolean {
+  if (!FACEBOOK_HOST_PATTERN.test(window.location.hostname)) return false;
+  if (FACEBOOK_REEL_PATH_PATTERN.test(window.location.pathname)) return true;
+  if (video) {
+    const player =
+      video.closest('[role="group"][aria-label="Video player"]') ||
+      video.parentElement;
+    if (player?.querySelector('[aria-label="Search reel"]')) return true;
+  }
+  return Boolean(document.querySelector('[aria-label="Search reel"]'));
 }
 
 function isYouTubePlaybackPage(): boolean {
