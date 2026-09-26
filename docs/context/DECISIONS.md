@@ -80,5 +80,5 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Consequences:** Layout is consistent whether expanding left or right; fullscreen transitions across YouTube and Facebook maintain selected speed.
 - **Related Issue:** [#22](https://github.com/xuanhao1804/brower_extensions/issues/22)
 - **Related PR:** None.
-- **Related commit:** Pending.
+- **Related commit:** [`a5e9caf`](https://github.com/xuanhao1804/brower_extensions/commit/a5e9caf)
 
