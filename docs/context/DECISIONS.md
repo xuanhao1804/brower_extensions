@@ -2,6 +2,13 @@
 
 This is an ADR-lite log. New entries are appended only for decisions expected to constrain future work.
 
+## 2026-10-01 — Receive optional feedback through Google Forms
+
+- **Decision:** Use a static popup footer link to https://forms.gle/xu3KSDQQJrjUkTb39, opened in a new tab with `noopener noreferrer`; do not add a backend, credentials, permissions, or automatic data submission.
+- **Rationale:** Users can submit bug reports, suggestions, and optional screenshots through an existing hosted form without adding extension infrastructure.
+- **Consequences:** Google handles form authentication and uploads. Feedback does not automatically create GitHub Issues. Privacy policy documents voluntary submissions separately from local extension processing.
+- **Related Issue:** [#23](https://github.com/xuanhao1804/brower_extensions/issues/23)
+
 ## 2026-09-18 — Use a content-script-first WXT architecture
 
 - **Decision:** Build the MVP with WXT, strict TypeScript, Vanilla UI, one content script, and one popup; do not add React, a background/service worker, page-world injection, or a backend without a concrete requirement.
@@ -81,4 +88,3 @@ This is an ADR-lite log. New entries are appended only for decisions expected to
 - **Related Issue:** [#22](https://github.com/xuanhao1804/brower_extensions/issues/22)
 - **Related PR:** None.
 - **Related commit:** [`a5e9caf`](https://github.com/xuanhao1804/brower_extensions/commit/a5e9caf)
-

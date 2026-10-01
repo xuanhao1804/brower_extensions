@@ -1,6 +1,6 @@
 # Project context
 
-Last verified: 2026-09-23
+Last verified: 2026-10-01
 
 ## Purpose and product
 
@@ -23,6 +23,7 @@ The GitHub repository is `xuanhao1804/brower_extensions` (the remote name contai
 
 - `VIDEO_SPEED_CONTROLLER/entrypoints/content.ts`: all-frame content script matched on `*://*/*`. Discovers eligible `<video>` elements, selects one active player, applies playback speed and 10-second seeks, handles keyboard/wheel events, and mounts the Shadow DOM on-video controller.
 - `VIDEO_SPEED_CONTROLLER/entrypoints/popup/`: compact settings/quick-control popup. It reads and writes settings and sends typed messages to the active tab.
+- The popup footer links to an optional external Google Form for feedback; opening the link sends no settings or page data.
 - No background/service worker, options page, backend, or page-world injected script currently exists.
 
 ### Shared modules

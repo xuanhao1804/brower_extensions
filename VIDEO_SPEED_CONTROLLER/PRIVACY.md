@@ -1,6 +1,6 @@
 # Privacy Policy for Speedable — Video Speed Controller
 
-Effective date: September 18, 2026
+Effective date: October 1, 2026
 
 Speedable — Video Speed Controller is a browser extension that lets users control the
 playback speed of HTML5 videos with keyboard shortcuts, mouse gestures, speed
@@ -44,7 +44,21 @@ embedded frames is used only to support video players contained within iframes.
 ## Remote code and third parties
 
 The extension does not download or execute remote code. All executable code is
-included in the extension package. No user data is provided to third parties.
+included in the extension package. The extension does not automatically send
+user data to third parties.
+
+## Optional feedback
+
+The popup's Feedback link opens an external Google Form in a new tab. The
+extension does not send settings, browsing history, or page content to the form.
+If you submit feedback, the developer receives the information you voluntarily
+provide, including any screenshots and optional contact email, through Google
+Forms and Google Drive. Google sign-in is required for file uploads; Google
+indicates that account name, email, and photo are recorded with uploaded files.
+This information is used to investigate reports, improve Speedable, and reply
+when requested. Please avoid including sensitive information in your submission.
+Google's privacy policy applies to the form service. To request deletion of
+submitted feedback, contact the form owner through Google Forms.
 
 ## Data retention and deletion
 
