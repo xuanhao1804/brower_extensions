@@ -43,6 +43,10 @@ export default defineContentScript({
     let activeVideo: HTMLVideoElement | null = null;
     let layoutFrame: number | null = null;
     let lastUserSpeed: number = settings.defaultSpeed;
+    const shortSpeedRequests = new WeakMap<
+      HTMLVideoElement,
+      { speed: number; retries: number }
+    >();
     const controllers = new Map<HTMLVideoElement, VideoController>();
     const observedVideos = new Map<HTMLVideoElement, ObservedVideo>();
 
@@ -78,21 +82,34 @@ export default defineContentScript({
       return bestVideo;
     }
 
-    function setSpeed(video: HTMLVideoElement, requestedSpeed: number): number {
+    function setSpeed(
+      video: HTMLVideoElement,
+      requestedSpeed: number,
+      userRequested = true,
+    ): number {
       const speed = normalizeSpeed(requestedSpeed);
-      lastUserSpeed = speed;
       try {
         video.playbackRate = speed;
       } catch (error) {
         console.warn('[Speedable] Không thể đổi tốc độ video.', error);
         return video.playbackRate;
       }
+      lastUserSpeed = speed;
+      if (userRequested && isYouTubeShortsPage()) {
+        shortSpeedRequests.set(video, { speed, retries: 0 });
+      }
       updateBadge(controllers.get(video));
       return video.playbackRate;
     }
 
     function adjustSpeed(video: HTMLVideoElement, direction: -1 | 1): void {
-      setSpeed(video, video.playbackRate + settings.speedStep * direction);
+      setSpeed(video, getRequestedSpeed(video) + settings.speedStep * direction);
+    }
+
+    function getRequestedSpeed(video: HTMLVideoElement): number {
+      return isYouTubeShortsPage()
+        ? (shortSpeedRequests.get(video)?.speed ?? video.playbackRate)
+        : video.playbackRate;
     }
 
     function seekVideo(video: HTMLVideoElement, offsetSeconds: number): void {
@@ -115,7 +132,7 @@ export default defineContentScript({
 
     function cyclePreset(video: HTMLVideoElement): void {
       const next = settings.presets.find(
-        (preset) => preset > video.playbackRate + 0.001,
+        (preset) => preset > getRequestedSpeed(video) + 0.001,
       );
       setSpeed(video, next ?? settings.presets[0] ?? settings.defaultSpeed);
     }
@@ -415,7 +432,26 @@ export default defineContentScript({
       shadow.append(style, controls);
       document.documentElement.append(host);
 
-      const onRateChange = () => updateBadge(controllers.get(video));
+      const onRateChange = () => {
+        const request = shortSpeedRequests.get(video);
+        // Shorts may reset the media rate after our write. Reassert explicit
+        // user intent, but cap retries so a competing player cannot loop forever.
+        if (
+          isYouTubeShortsPage() &&
+          request &&
+          video.playbackRate !== request.speed &&
+          request.retries < 3
+        ) {
+          request.retries += 1;
+          try {
+            video.playbackRate = request.speed;
+          } catch (error) {
+            request.retries = 3;
+            console.warn('[Speedable] Không thể giữ tốc độ Shorts.', error);
+          }
+        }
+        updateBadge(controllers.get(video));
+      };
       const onClick = (event: MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -498,7 +534,7 @@ export default defineContentScript({
           : settings.defaultSpeed !== 1
             ? settings.defaultSpeed
             : (video.playbackRate || 1);
-      setSpeed(video, initialSpeed);
+      setSpeed(video, initialSpeed, false);
       updateBadge(controller);
       return controller;
     }
@@ -539,6 +575,7 @@ export default defineContentScript({
       if (!controller) return;
       controller.cleanup();
       controllers.delete(video);
+      shortSpeedRequests.delete(video);
       if (activeVideo === video) activeVideo = null;
     }
 
@@ -651,15 +688,15 @@ export default defineContentScript({
 
       if (matchesShortcut(event, settings.shortcuts.decrease)) {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         adjustSpeed(video, -1);
       } else if (matchesShortcut(event, settings.shortcuts.increase)) {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         adjustSpeed(video, 1);
       } else if (matchesShortcut(event, settings.shortcuts.reset)) {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         setSpeed(video, 1);
       }
     }, true);
@@ -689,7 +726,7 @@ export default defineContentScript({
         lastUserSpeed !== settings.defaultSpeed &&
         video.playbackRate !== lastUserSpeed
       ) {
-        setSpeed(video, lastUserSpeed);
+        setSpeed(video, lastUserSpeed, false);
       }
     });
     ctx.addEventListener(document, 'yt-navigate-start', () => {
@@ -1001,6 +1038,10 @@ function createLayoutRect(
 
 function isYouTubeSite(): boolean {
   return YOUTUBE_HOST_PATTERN.test(window.location.hostname);
+}
+
+function isYouTubeShortsPage(): boolean {
+  return isYouTubeSite() && /^\/shorts(?:\/|$)/.test(window.location.pathname);
 }
 
 function isFacebookReelPage(video?: HTMLVideoElement): boolean {

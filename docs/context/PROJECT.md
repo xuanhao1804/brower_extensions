@@ -64,6 +64,7 @@ The content script uses DOM/event APIs directly; it does not need page-world acc
 - `.github/ISSUE_TEMPLATE/`: top-level task template.
 - `VIDEO_SPEED_CONTROLLER/public/`: SVG source and PNG extension icons.
 - `VIDEO_SPEED_CONTROLLER/tests/fixtures/video.html`: manual HTML5 video fixture; no automated test runner is configured.
+- `VIDEO_SPEED_CONTROLLER/tests/shorts-edge.mjs`: focused Edge regression harness; run from the product directory with `node tests/shorts-edge.mjs <path-to-playwright>`. Uses installed Edge and real DOM/media events with simulated YouTube rate resets and WXT APIs; no added package dependency.
 
 ## Commands
 
